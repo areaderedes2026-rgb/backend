@@ -15,7 +15,7 @@ export const listAreas = asyncHandler(async (req, res) => {
 
 export const getArea = asyncHandler(async (req, res) => {
   const area = await getAreaPublicBySlug(req.params.slug)
-  res.status(200).json({ ok: true, area })
+  res.status(200).json({ ok: true, area })  
 })
 
 export const listAreasAdmin = asyncHandler(async (req, res) => {
