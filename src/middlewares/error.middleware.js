@@ -25,6 +25,14 @@ export function errorHandler(err, req, res, next) {
     body.stack = err.stack
   }
 
+  // Loguea errores del servidor para diagnóstico en hosting (Railway, etc.).
+  if (status >= 500) {
+    const where = `${req.method} ${req.originalUrl}`
+    const reason = err?.code ? `${err.code}: ${err.message}` : err?.message || 'Unknown error'
+    console.error(`[API 500] ${where} -> ${reason}`)
+    if (err?.stack) console.error(err.stack)
+  }
+
   res.status(status).json(body)
 }
 
