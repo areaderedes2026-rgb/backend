@@ -11,6 +11,7 @@ import tourismPlaceRoutes from './routes/tourismPlace.routes.js'
 import citizenAttentionRoutes from './routes/citizenAttention.routes.js'
 import homeMapRoutes from './routes/homeMap.routes.js'
 import uploadRoutes from './routes/upload.routes.js'
+import intendenciaRoutes from './routes/intendencia.routes.js'
 import { pingDb } from './config/db.js'
 import { corsOriginOption } from './config/cors.js'
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js'
@@ -54,6 +55,7 @@ app.use('/api/history', historyRoutes)
 app.use('/api/tourism-places', tourismPlaceRoutes)
 app.use('/api/citizen-attention', citizenAttentionRoutes)
 app.use('/api/home-map', homeMapRoutes)
+app.use('/api/intendencia', intendenciaRoutes)
 app.use('/api/news', newsRoutes)
 
 app.use(notFoundHandler)
