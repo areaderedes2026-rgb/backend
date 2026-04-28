@@ -5,6 +5,8 @@ import {
   createNewsRecord,
   updateNewsRecord,
   removeNews,
+  recordNewsInteraction,
+  getNewsStatsDashboard,
 } from '../services/news.service.js'
 import { AppError } from '../utils/AppError.js'
 
@@ -27,7 +29,7 @@ export const postNews = asyncHandler(async (req, res) => {
 })
 
 export const putNews = asyncHandler(async (req, res) => {
-  const item = await updateNewsRecord(req.params.id, req.body)
+  const item = await updateNewsRecord(req.params.id, req.body, req.user?.id ?? null)
   if (!item) {
     throw new AppError('Noticia no encontrada.', 404)
   }
@@ -40,4 +42,18 @@ export const deleteNews = asyncHandler(async (req, res) => {
     throw new AppError('Noticia no encontrada.', 404)
   }
   res.status(200).json({ ok: true, message: 'Noticia eliminada.' })
+})
+
+export const postNewsInteraction = asyncHandler(async (req, res) => {
+  const { type, channel } = req.body || {}
+  const item = await recordNewsInteraction(req.params.idOrSlug, type, channel)
+  if (!item) {
+    throw new AppError('Noticia no encontrada.', 404)
+  }
+  res.status(200).json({ ok: true, stats: item.stats })
+})
+
+export const getNewsStats = asyncHandler(async (_req, res) => {
+  const data = await getNewsStatsDashboard()
+  res.status(200).json(data)
 })

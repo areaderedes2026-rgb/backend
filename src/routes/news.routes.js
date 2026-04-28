@@ -6,6 +6,8 @@ import {
   postNews,
   putNews,
   deleteNews,
+  postNewsInteraction,
+  getNewsStats,
 } from '../controllers/news.controller.js'
 import { authenticate, requireStaff } from '../middlewares/auth.middleware.js'
 import { validate } from '../middlewares/validate.middleware.js'
@@ -13,6 +15,8 @@ import { validate } from '../middlewares/validate.middleware.js'
 const router = Router()
 
 router.get('/', listNews)
+
+router.get('/stats/overview', authenticate, requireStaff, getNewsStats)
 
 router.get(
   '/:idOrSlug',
@@ -37,6 +41,19 @@ router.post(
     validate,
   ],
   postNews,
+)
+
+router.post(
+  '/:idOrSlug/interactions',
+  [
+    param('idOrSlug').trim().notEmpty().isLength({ max: 300 }),
+    body('type').isIn(['view', 'share']),
+    body('channel')
+      .optional({ nullable: true })
+      .isIn(['facebook', 'whatsapp', 'instagram', 'native', 'copy_link']),
+    validate,
+  ],
+  postNewsInteraction,
 )
 
 router.put(

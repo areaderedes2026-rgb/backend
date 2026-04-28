@@ -3,6 +3,12 @@
  */
 export function mapNewsRow(row, galleryUrls = []) {
   if (!row) return null
+  const facebook = Number(row.share_facebook_count || 0)
+  const whatsapp = Number(row.share_whatsapp_count || 0)
+  const instagram = Number(row.share_instagram_count || 0)
+  const native = Number(row.share_native_count || 0)
+  const copyLink = Number(row.share_copy_link_count || 0)
+  const totalShares = facebook + whatsapp + instagram + native + copyLink
   return {
     id: String(row.id),
     slug: row.slug,
@@ -24,6 +30,40 @@ export function mapNewsRow(row, galleryUrls = []) {
       ? new Date(row.updated_at).toISOString()
       : undefined,
     createdBy: row.created_by != null ? String(row.created_by) : null,
+    createdByUser:
+      row.created_by != null
+        ? {
+            id: String(row.created_by),
+            username: row.creator_username ?? null,
+            fullName: row.creator_full_name ?? null,
+          }
+        : null,
+    updatedBy: row.updated_by != null ? String(row.updated_by) : null,
+    updatedByUser:
+      row.updated_by != null
+        ? {
+            id: String(row.updated_by),
+            username: row.editor_username ?? null,
+            fullName: row.editor_full_name ?? null,
+          }
+        : null,
+    stats: {
+      views: Number(row.views_count || 0),
+      shares: {
+        facebook,
+        whatsapp,
+        instagram,
+        native,
+        copyLink,
+        total: totalShares,
+      },
+      lastViewedAt: row.last_viewed_at
+        ? new Date(row.last_viewed_at).toISOString()
+        : null,
+      lastSharedAt: row.last_shared_at
+        ? new Date(row.last_shared_at).toISOString()
+        : null,
+    },
   }
 }
 

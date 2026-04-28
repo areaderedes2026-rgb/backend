@@ -9,6 +9,10 @@ import {
   findGalleryUrlsByNewsId,
   deleteGalleryByNewsId,
   insertGalleryImages,
+  ensureNewsStats,
+  recordNewsView,
+  recordNewsShare,
+  getNewsStatsOverview,
 } from '../models/news.model.js'
 import {
   findCategoryById,
@@ -112,12 +116,13 @@ export async function createNewsRecord(payload, createdBy) {
   if (gallery.length) {
     await insertGalleryImages(row.id, gallery)
   }
+  await ensureNewsStats(row.id)
 
   const galleryRows = await findGalleryUrlsByNewsId(row.id)
   return mapNewsRow(row, galleryRows)
 }
 
-export async function updateNewsRecord(id, payload) {
+export async function updateNewsRecord(id, payload, updatedBy) {
   const existing = await findNewsById(Number(id))
   if (!existing) return null
 
@@ -151,7 +156,7 @@ export async function updateNewsRecord(id, payload) {
     data.slug = s || existing.slug
   }
 
-  const row = await updateNews(Number(id), data)
+  const row = await updateNews(Number(id), data, updatedBy ?? null)
 
   if (payload.galleryUrls !== undefined) {
     const prev = await findGalleryUrlsByNewsId(Number(id))
@@ -164,6 +169,23 @@ export async function updateNewsRecord(id, payload) {
 
   const galleryRows = await findGalleryUrlsByNewsId(Number(id))
   return mapNewsRow(row, galleryRows)
+}
+
+export async function recordNewsInteraction(idOrSlug, type, channel = null) {
+  const row = await findNewsByIdOrSlug(idOrSlug)
+  if (!row) return null
+  if (type === 'view') {
+    await recordNewsView(row.id)
+  } else if (type === 'share' && channel) {
+    await recordNewsShare(row.id, channel)
+  }
+  const gallery = await findGalleryUrlsByNewsId(row.id)
+  const fresh = await findNewsById(row.id)
+  return mapNewsRow(fresh, gallery)
+}
+
+export async function getNewsStatsDashboard() {
+  return getNewsStatsOverview()
 }
 
 /**
