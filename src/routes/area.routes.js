@@ -12,6 +12,10 @@ import {
   getAreaProfileBySlug,
   putAreaProfileBySlug,
 } from '../controllers/areaProfile.controller.js'
+import {
+  getAreasPageContentCtrl,
+  putAreasPageContentCtrl,
+} from '../controllers/areasPage.controller.js'
 import { authenticate, requireStaff } from '../middlewares/auth.middleware.js'
 import { validate } from '../middlewares/validate.middleware.js'
 
@@ -21,6 +25,8 @@ const slugValidator = [param('slug').trim().matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 router.get('/', listAreas)
 router.get('/admin/list', authenticate, requireStaff, listAreasAdmin)
+router.get('/page-content', getAreasPageContentCtrl)
+router.put('/page-content', authenticate, requireStaff, putAreasPageContentCtrl)
 
 router.get('/:slug/profile', slugValidator, getAreaProfileBySlug)
 router.put(
