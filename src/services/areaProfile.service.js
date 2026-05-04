@@ -27,6 +27,52 @@ function sanitizeItems(list, mapper, maxItems = 20) {
   return out
 }
 
+function slugFromSchoolName(name, idx) {
+  const s = cleanString(name, 120)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return s || `escuela-${idx}`
+}
+
+function sanitizeSchoolsSection(input) {
+  if (input === null) return null
+  if (!input || typeof input !== 'object') return null
+  const rawItems = Array.isArray(input.items) ? input.items : []
+  const items = []
+  for (let idx = 0; idx < rawItems.length && items.length < 24; idx++) {
+    const item = rawItems[idx]
+    const name = cleanString(item?.name, 200)
+    const discipline = cleanString(item?.discipline, 100)
+    const schedule = cleanString(item?.schedule, 500)
+    const venue = cleanString(item?.venue, 280)
+    const description = cleanString(item?.description, 2400)
+    const imageUrl = cleanUrl(item?.imageUrl, 2048)
+    let id = cleanString(item?.id, 100)
+    if (!id) id = slugFromSchoolName(name, idx)
+    if (!name && !description) continue
+    items.push({
+      id,
+      name,
+      discipline,
+      schedule,
+      venue,
+      description,
+      imageUrl,
+    })
+  }
+  if (!items.length) return null
+  return {
+    navLabel: cleanString(input.navLabel, 80) || 'Escuelas',
+    eyebrow: cleanString(input.eyebrow, 120),
+    title: cleanString(input.title, 200),
+    intro: cleanString(input.intro, 3200),
+    items,
+  }
+}
+
 function sanitizePayload(payload) {
   const directorIn = payload?.director || {}
   const locationIn = payload?.location || {}
@@ -89,6 +135,7 @@ function sanitizePayload(payload) {
       mapEmbedUrl: cleanUrl(locationIn.mapEmbedUrl, 2048),
       mapExternalUrl: cleanUrl(locationIn.mapExternalUrl, 2048),
     },
+    schoolsSection: sanitizeSchoolsSection(payload?.schoolsSection),
   }
 }
 

@@ -11,9 +11,27 @@ function parseJsonSafe(value, fallback) {
   }
 }
 
+function mapSchoolsSectionFromRow(row) {
+  if (row == null || row.schools_json == null) return undefined
+  const raw = row.schools_json
+  const parsed =
+    typeof raw === 'string' ? parseJsonSafe(raw, null) : typeof raw === 'object' ? raw : null
+  if (!parsed || typeof parsed !== 'object') return undefined
+  const items = Array.isArray(parsed.items) ? parsed.items : []
+  if (!items.length) return undefined
+  return {
+    navLabel: typeof parsed.navLabel === 'string' ? parsed.navLabel : 'Escuelas',
+    eyebrow: typeof parsed.eyebrow === 'string' ? parsed.eyebrow : '',
+    title: typeof parsed.title === 'string' ? parsed.title : '',
+    intro: typeof parsed.intro === 'string' ? parsed.intro : '',
+    items,
+  }
+}
+
 function mapAreaProfileRow(row) {
   if (!row) return null
-  return {
+  const schoolsSection = mapSchoolsSectionFromRow(row)
+  const out = {
     slug: row.slug,
     heroTag: row.hero_tag || '',
     mission: row.mission || '',
@@ -38,6 +56,10 @@ function mapAreaProfileRow(row) {
     },
     updatedAt: row.updated_at,
   }
+  if (schoolsSection) {
+    out.schoolsSection = schoolsSection
+  }
+  return out
 }
 
 export async function findAreaProfileBySlug(slug) {
@@ -65,11 +87,12 @@ export async function upsertAreaProfileBySlug(slug, payload) {
       initiatives_json,
       contacts_json,
       notices_json,
+      schools_json,
       location_address,
       location_references,
       location_map_embed_url,
       location_map_external_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_tag = VALUES(hero_tag),
       mission = VALUES(mission),
@@ -84,6 +107,7 @@ export async function upsertAreaProfileBySlug(slug, payload) {
       initiatives_json = VALUES(initiatives_json),
       contacts_json = VALUES(contacts_json),
       notices_json = VALUES(notices_json),
+      schools_json = VALUES(schools_json),
       location_address = VALUES(location_address),
       location_references = VALUES(location_references),
       location_map_embed_url = VALUES(location_map_embed_url),
@@ -104,6 +128,7 @@ export async function upsertAreaProfileBySlug(slug, payload) {
       JSON.stringify(payload.initiatives),
       JSON.stringify(payload.contactCards),
       JSON.stringify(payload.notices),
+      payload.schoolsSection ? JSON.stringify(payload.schoolsSection) : null,
       payload.location.address,
       payload.location.references,
       payload.location.mapEmbedUrl,
