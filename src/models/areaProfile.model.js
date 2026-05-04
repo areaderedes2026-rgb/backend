@@ -11,14 +11,15 @@ function parseJsonSafe(value, fallback) {
   }
 }
 
+/** Devuelve objeto con ítems o `null` si no hay datos persistidos (nunca `undefined`). */
 function mapSchoolsSectionFromRow(row) {
-  if (row == null || row.schools_json == null) return undefined
+  if (row == null || row.schools_json == null) return null
   const raw = row.schools_json
   const parsed =
     typeof raw === 'string' ? parseJsonSafe(raw, null) : typeof raw === 'object' ? raw : null
-  if (!parsed || typeof parsed !== 'object') return undefined
+  if (!parsed || typeof parsed !== 'object') return null
   const items = Array.isArray(parsed.items) ? parsed.items : []
-  if (!items.length) return undefined
+  if (!items.length) return null
   return {
     navLabel: typeof parsed.navLabel === 'string' ? parsed.navLabel : 'Escuelas',
     eyebrow: typeof parsed.eyebrow === 'string' ? parsed.eyebrow : '',
@@ -30,8 +31,7 @@ function mapSchoolsSectionFromRow(row) {
 
 function mapAreaProfileRow(row) {
   if (!row) return null
-  const schoolsSection = mapSchoolsSectionFromRow(row)
-  const out = {
+  return {
     slug: row.slug,
     heroTag: row.hero_tag || '',
     mission: row.mission || '',
@@ -48,6 +48,8 @@ function mapAreaProfileRow(row) {
     initiatives: parseJsonSafe(row.initiatives_json, []),
     contactCards: parseJsonSafe(row.contacts_json, []),
     notices: parseJsonSafe(row.notices_json, []),
+    /** Siempre presente cuando existe fila en BD: `null` = vacío guardado (el cliente no debe asumir fallback estático). */
+    schoolsSection: mapSchoolsSectionFromRow(row),
     location: {
       address: row.location_address || '',
       references: row.location_references || '',
@@ -56,10 +58,6 @@ function mapAreaProfileRow(row) {
     },
     updatedAt: row.updated_at,
   }
-  if (schoolsSection) {
-    out.schoolsSection = schoolsSection
-  }
-  return out
 }
 
 export async function findAreaProfileBySlug(slug) {
