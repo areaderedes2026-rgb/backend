@@ -1,4 +1,5 @@
 import multer from 'multer'
+import { CLOUDINARY_IMPORT_MAX_BYTES } from '../config/cloudinary.js'
 
 export const ALLOWED_IMAGE_MIME = new Set([
   'image/jpeg',
@@ -9,7 +10,7 @@ export const ALLOWED_IMAGE_MIME = new Set([
 
 export const uploadNewsImage = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: CLOUDINARY_IMPORT_MAX_BYTES },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_IMAGE_MIME.has(file.mimetype)) {
       cb(null, true)

@@ -50,7 +50,7 @@ export function ensureCloudinaryConfigured() {
 export const CLOUDINARY_NEWS_FOLDER =
   process.env.CLOUDINARY_NEWS_FOLDER || 'municipalidad-trancas/news'
 export const CLOUDINARY_IMPORT_MAX_BYTES = Number(
-  process.env.CLOUDINARY_IMPORT_MAX_BYTES || 5 * 1024 * 1024,
+  process.env.CLOUDINARY_IMPORT_MAX_BYTES || 10 * 1024 * 1024,
 )
 export const CLOUDINARY_IMPORT_TIMEOUT_MS = Number(
   process.env.CLOUDINARY_IMPORT_TIMEOUT_MS || 12_000,

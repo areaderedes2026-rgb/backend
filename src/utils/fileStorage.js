@@ -17,6 +17,11 @@ const ALLOWED_IMAGE_MIME = new Set([
   'image/gif',
 ])
 
+function maxImageSizeLabel() {
+  const mb = Math.round((CLOUDINARY_IMPORT_MAX_BYTES / (1024 * 1024)) * 10) / 10
+  return `${mb} MB`
+}
+
 function cloudinaryFolder(kind = 'gallery') {
   return `${CLOUDINARY_NEWS_FOLDER}/${kind === 'cover' ? 'cover' : 'gallery'}`
 }
@@ -81,7 +86,10 @@ async function readResponseBufferWithLimit(response, maxBytes) {
   if (!reader) {
     const arr = new Uint8Array(await response.arrayBuffer())
     if (arr.byteLength > maxBytes) {
-      throw new AppError('La imagen excede el tamaño permitido (5 MB).', 400)
+      throw new AppError(
+        `La imagen excede el tamaño permitido (${maxImageSizeLabel()}).`,
+        400,
+      )
     }
     return Buffer.from(arr)
   }
@@ -93,7 +101,10 @@ async function readResponseBufferWithLimit(response, maxBytes) {
     const chunk = Buffer.from(value)
     total += chunk.length
     if (total > maxBytes) {
-      throw new AppError('La imagen excede el tamaño permitido (5 MB).', 400)
+      throw new AppError(
+        `La imagen excede el tamaño permitido (${maxImageSizeLabel()}).`,
+        400,
+      )
     }
     chunks.push(chunk)
   }
@@ -112,7 +123,10 @@ export async function uploadNewsImageBuffer(buffer, { kind = 'gallery' } = {}) {
     throw new AppError('Archivo de imagen inválido.', 400)
   }
   if (buffer.length > CLOUDINARY_IMPORT_MAX_BYTES) {
-    throw new AppError('La imagen excede el tamaño permitido (5 MB).', 400)
+    throw new AppError(
+      `La imagen excede el tamaño permitido (${maxImageSizeLabel()}).`,
+      400,
+    )
   }
   const result = await uploadBufferToCloudinary(buffer, { kind })
   if (!result?.secure_url) {
@@ -151,7 +165,10 @@ export async function importNewsImageFromUrl(remoteUrl, { kind = 'gallery' } = {
   }
   const contentLength = Number(response.headers.get('content-length') || 0)
   if (contentLength > CLOUDINARY_IMPORT_MAX_BYTES) {
-    throw new AppError('La imagen excede el tamaño permitido (5 MB).', 400)
+    throw new AppError(
+      `La imagen excede el tamaño permitido (${maxImageSizeLabel()}).`,
+      400,
+    )
   }
   const mime = String(response.headers.get('content-type') || '')
     .split(';')[0]
