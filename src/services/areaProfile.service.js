@@ -1,6 +1,7 @@
 import { findAreaProfileBySlug, upsertAreaProfileBySlug } from '../models/areaProfile.model.js'
 import { findAreaBySlug } from '../models/area.model.js'
 import { AppError } from '../utils/AppError.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -158,6 +159,8 @@ export async function saveAreaProfile(slug, payload) {
   const validSlug = assertValidSlug(slug)
   const area = await findAreaBySlug(validSlug, { includeInactive: true })
   if (!area) throw new AppError('Área no encontrada.', 404)
+  const current = await findAreaProfileBySlug(validSlug)
+  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'perfil del área')
   const data = sanitizePayload(payload)
   return upsertAreaProfileBySlug(validSlug, data)
 }

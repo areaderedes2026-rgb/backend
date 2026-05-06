@@ -9,6 +9,7 @@ import {
   updateTourismPlaceRow,
 } from '../models/tourismPlace.model.js'
 import { AppError } from '../utils/AppError.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function cleanString(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -125,6 +126,7 @@ export async function editTourismPlace(id, payload) {
   if (!Number.isInteger(placeId) || placeId <= 0) throw new AppError('ID inválido.', 400)
   const existing = await findTourismPlaceById(placeId)
   if (!existing) throw new AppError('Lugar turístico no encontrado.', 404)
+  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updatedAt, 'lugar turístico')
   const data = sanitizePayload(payload, { forUpdate: true })
   const nextName = data.name || existing.name
   const sameName = await findTourismPlaceByName(nextName)

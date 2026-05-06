@@ -21,6 +21,7 @@ import {
 import { mapNewsRow } from '../utils/mapNews.js'
 import { slugify } from '../utils/slugify.js'
 import { AppError } from '../utils/AppError.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 import {
   deleteManagedFileByUrl,
   deleteManagedFilesByUrls,
@@ -125,6 +126,7 @@ export async function createNewsRecord(payload, createdBy) {
 export async function updateNewsRecord(id, payload, updatedBy) {
   const existing = await findNewsById(Number(id))
   if (!existing) return null
+  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'noticia')
 
   const data = {}
   if (payload.title !== undefined) data.title = String(payload.title).trim()

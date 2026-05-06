@@ -1,4 +1,5 @@
 import { getHomeMapContentRow, upsertHomeMapContentRow } from '../models/homeMap.model.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function cleanText(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -56,6 +57,8 @@ export async function getHomeMapContent() {
 }
 
 export async function saveHomeMapContent(payload) {
+  const current = await getHomeMapContentRow()
+  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'mapa de inicio')
   const data = sanitizePayload(payload)
   return upsertHomeMapContentRow(data)
 }

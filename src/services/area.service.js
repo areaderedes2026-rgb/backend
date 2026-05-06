@@ -10,6 +10,7 @@ import {
 import { deleteAreaProfileBySlug } from '../models/areaProfile.model.js'
 import { slugify } from '../utils/slugify.js'
 import { AppError } from '../utils/AppError.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function mapAreaRow(row) {
   if (!row) return null
@@ -92,6 +93,7 @@ export async function createAreaRecord(payload) {
 export async function updateAreaRecord(id, payload) {
   const existing = await findAreaById(Number(id))
   if (!existing) throw new AppError('Área no encontrada.', 404)
+  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'área')
 
   const data = {}
 

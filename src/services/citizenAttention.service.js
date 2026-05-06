@@ -8,6 +8,7 @@ import {
   upsertCitizenAttentionContentRow,
 } from '../models/citizenAttention.model.js'
 import { AppError } from '../utils/AppError.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 const ALLOWED_ICONS = new Set(['building', 'phone', 'mail', 'share'])
 const ALLOWED_STATUSES = new Set(['sin_resolver', 'leida', 'resuelta'])
@@ -162,6 +163,8 @@ export async function getCitizenAttentionContent() {
 }
 
 export async function saveCitizenAttentionContent(payload) {
+  const current = await getCitizenAttentionContentRow()
+  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de atención ciudadana')
   const data = sanitizeContentPayload(payload)
   return upsertCitizenAttentionContentRow(data)
 }
@@ -183,13 +186,14 @@ export async function getCitizenInquiryAdmin(id) {
   return item
 }
 
-export async function setCitizenInquiryStatus(id, nextStatus) {
+export async function setCitizenInquiryStatus(id, nextStatus, expectedUpdatedAt = null) {
   const status = cleanString(nextStatus, 24).toLowerCase()
   if (!ALLOWED_STATUSES.has(status)) {
     throw new AppError('Estado inválido.', 400)
   }
   const existing = await findCitizenInquiryByIdRow(Number(id))
   if (!existing) throw new AppError('Consulta no encontrada.', 404)
+  assertOptimisticLock(expectedUpdatedAt, existing.updatedAt, 'consulta ciudadana')
   return updateCitizenInquiryStatusRow(existing.id, status)
 }
 

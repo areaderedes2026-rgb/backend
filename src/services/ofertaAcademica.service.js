@@ -2,6 +2,7 @@ import {
   getOfertaAcademicaContentRow,
   upsertOfertaAcademicaContentRow,
 } from '../models/ofertaAcademica.model.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function cleanString(value, maxLen = 0) {
   const v = String(value || '').trim()
@@ -153,6 +154,8 @@ export async function getOfertaAcademicaContent() {
 }
 
 export async function saveOfertaAcademicaContent(payload) {
+  const current = await getOfertaAcademicaContentRow()
+  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de oferta académica')
   const data = sanitizePayload(payload)
   return upsertOfertaAcademicaContentRow(data)
 }

@@ -2,6 +2,7 @@ import {
   getAreasPageContentRow,
   upsertAreasPageContentRow,
 } from '../models/areasPage.model.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function cleanString(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -23,6 +24,8 @@ export async function getAreasPageContent() {
 }
 
 export async function saveAreasPageContent(payload) {
+  const current = await getAreasPageContentRow()
+  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de áreas')
   return upsertAreasPageContentRow({
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
   })

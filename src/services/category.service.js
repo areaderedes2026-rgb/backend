@@ -11,6 +11,7 @@ import {
 import { mapCategoryRow } from '../utils/mapCategory.js'
 import { slugify } from '../utils/slugify.js'
 import { AppError } from '../utils/AppError.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 async function ensureUniqueCategorySlug(base, excludeId = null) {
   let slug = base || 'categoria'
@@ -69,6 +70,7 @@ export async function createCategoryRecord(payload) {
 export async function updateCategoryRecord(id, payload) {
   const existing = await findCategoryById(Number(id))
   if (!existing) throw new AppError('Categoría no encontrada.', 404)
+  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'categoría')
 
   const data = {}
   if (payload.name !== undefined) {

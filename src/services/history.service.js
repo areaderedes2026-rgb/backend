@@ -1,4 +1,5 @@
 import { getHistoryContentRow, upsertHistoryContentRow } from '../models/history.model.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function cleanString(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -98,6 +99,8 @@ export async function getHistoryContent() {
 }
 
 export async function saveHistoryContent(payload) {
+  const current = await getHistoryContentRow()
+  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de historia')
   const data = sanitizePayload(payload)
   return upsertHistoryContentRow(data)
 }

@@ -9,6 +9,7 @@ import {
 } from '../models/user.model.js'
 import { mapUserPublic } from '../utils/mapNews.js'
 import { AppError } from '../utils/AppError.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function normalizeUsername(raw) {
   return String(raw || '')
@@ -58,6 +59,7 @@ export async function createUserRecord(payload) {
 export async function updateUserRecord(id, payload, { currentUserId }) {
   const existing = await findUserById(Number(id))
   if (!existing) throw new AppError('Usuario no encontrado.', 404)
+  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'usuario')
 
   const data = {}
 

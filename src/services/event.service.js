@@ -8,6 +8,7 @@ import {
 } from '../models/event.model.js'
 import { AppError } from '../utils/AppError.js'
 import { slugify } from '../utils/slugify.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function cleanText(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -79,6 +80,7 @@ export async function createEvent(payload) {
 export async function updateEvent(id, payload) {
   const existing = await findEventByIdRow(Number(id))
   if (!existing) throw new AppError('Evento no encontrado.', 404)
+  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updatedAt, 'evento')
   const data = sanitizePayload(payload)
   const baseSlug = data.slug || slugify(data.title)
   data.slug = await ensureUniqueSlug(baseSlug, Number(id))

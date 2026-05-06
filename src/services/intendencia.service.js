@@ -2,6 +2,7 @@ import {
   getIntendenciaContentRow,
   upsertIntendenciaContentRow,
 } from '../models/intendencia.model.js'
+import { assertOptimisticLock } from '../utils/concurrency.js'
 
 function cleanString(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -45,6 +46,8 @@ export async function getIntendenciaContent() {
 }
 
 export async function saveIntendenciaContent(payload) {
+  const current = await getIntendenciaContentRow()
+  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de intendencia')
   const data = sanitizePayload(payload)
   return upsertIntendenciaContentRow(data)
 }

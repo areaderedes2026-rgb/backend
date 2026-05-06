@@ -35,7 +35,11 @@ export const getCitizenInquiryAdminCtrl = asyncHandler(async (req, res) => {
 })
 
 export const patchCitizenInquiryStatusCtrl = asyncHandler(async (req, res) => {
-  const inquiry = await setCitizenInquiryStatus(req.params.id, req.body?.status)
+  const inquiry = await setCitizenInquiryStatus(
+    req.params.id,
+    req.body?.status,
+    req.body?.expectedUpdatedAt,
+  )
   res.status(200).json({ ok: true, inquiry })
 })
 
