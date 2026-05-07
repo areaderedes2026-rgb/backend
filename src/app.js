@@ -13,6 +13,7 @@ import homeMapRoutes from './routes/homeMap.routes.js'
 import uploadRoutes from './routes/upload.routes.js'
 import intendenciaRoutes from './routes/intendencia.routes.js'
 import legisladorEsteRoutes from './routes/legisladorEste.routes.js'
+import concejoDeliberanteRoutes from './routes/concejoDeliberante.routes.js'
 import ofertaAcademicaRoutes from './routes/ofertaAcademica.routes.js'
 import eventRoutes from './routes/event.routes.js'
 import { pingDb } from './config/db.js'
@@ -60,6 +61,7 @@ app.use('/api/citizen-attention', citizenAttentionRoutes)
 app.use('/api/home-map', homeMapRoutes)
 app.use('/api/intendencia', intendenciaRoutes)
 app.use('/api/legislador-este', legisladorEsteRoutes)
+app.use('/api/concejo-deliberante', concejoDeliberanteRoutes)
 app.use('/api/oferta-academica', ofertaAcademicaRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/news', newsRoutes)
