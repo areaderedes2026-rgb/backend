@@ -25,6 +25,18 @@ function cleanUrl(value, maxLen = 2048) {
   return ''
 }
 
+function cleanBool(value, fallback = true) {
+  if (value === undefined || value === null) return fallback
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase()
+    if (v === '0' || v === 'false' || v === 'no') return false
+    if (v === '1' || v === 'true' || v === 'yes') return true
+  }
+  return Boolean(value)
+}
+
 function sanitizePayload(payload) {
   return {
     heroEyebrow: cleanString(payload?.heroEyebrow, 120),
@@ -38,6 +50,15 @@ function sanitizePayload(payload) {
     contactEmail: cleanString(payload?.contactEmail, 180).toLowerCase(),
     contactPhone: cleanString(payload?.contactPhone, 80),
     officeHours: cleanString(payload?.officeHours, 140),
+    showMayorPhoto: cleanBool(payload?.showMayorPhoto, true),
+    showMayorRole: cleanBool(payload?.showMayorRole, true),
+    showMayorBio: cleanBool(payload?.showMayorBio, true),
+    showContactPanel: cleanBool(payload?.showContactPanel, true),
+    showContactEmail: cleanBool(payload?.showContactEmail, true),
+    showContactPhone: cleanBool(payload?.showContactPhone, true),
+    showOfficeHours: cleanBool(payload?.showOfficeHours, true),
+    showContactNote: cleanBool(payload?.showContactNote, true),
+    showManagementAxes: cleanBool(payload?.showManagementAxes, true),
   }
 }
 

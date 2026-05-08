@@ -1,5 +1,17 @@
 import { pool } from '../config/db.js'
 
+function toBoolFlag(value, fallback = true) {
+  if (value === undefined || value === null) return fallback
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value !== 0
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase()
+    if (v === '0' || v === 'false' || v === 'no') return false
+    if (v === '1' || v === 'true' || v === 'yes') return true
+  }
+  return Boolean(value)
+}
+
 function mapIntendenciaRow(row) {
   if (!row) return null
   return {
@@ -14,6 +26,15 @@ function mapIntendenciaRow(row) {
     contactEmail: row.contact_email || '',
     contactPhone: row.contact_phone || '',
     officeHours: row.office_hours || '',
+    showMayorPhoto: toBoolFlag(row.show_mayor_photo),
+    showMayorRole: toBoolFlag(row.show_mayor_role),
+    showMayorBio: toBoolFlag(row.show_mayor_bio),
+    showContactPanel: toBoolFlag(row.show_contact_panel),
+    showContactEmail: toBoolFlag(row.show_contact_email),
+    showContactPhone: toBoolFlag(row.show_contact_phone),
+    showOfficeHours: toBoolFlag(row.show_office_hours),
+    showContactNote: toBoolFlag(row.show_contact_note),
+    showManagementAxes: toBoolFlag(row.show_management_axes),
     updatedAt: row.updated_at || null,
   }
 }
@@ -39,8 +60,17 @@ export async function upsertIntendenciaContentRow(payload) {
       mayor_photo_url,
       contact_email,
       contact_phone,
-      office_hours
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      office_hours,
+      show_mayor_photo,
+      show_mayor_role,
+      show_mayor_bio,
+      show_contact_panel,
+      show_contact_email,
+      show_contact_phone,
+      show_office_hours,
+      show_contact_note,
+      show_management_axes
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
@@ -53,6 +83,15 @@ export async function upsertIntendenciaContentRow(payload) {
       contact_email = VALUES(contact_email),
       contact_phone = VALUES(contact_phone),
       office_hours = VALUES(office_hours),
+      show_mayor_photo = VALUES(show_mayor_photo),
+      show_mayor_role = VALUES(show_mayor_role),
+      show_mayor_bio = VALUES(show_mayor_bio),
+      show_contact_panel = VALUES(show_contact_panel),
+      show_contact_email = VALUES(show_contact_email),
+      show_contact_phone = VALUES(show_contact_phone),
+      show_office_hours = VALUES(show_office_hours),
+      show_contact_note = VALUES(show_contact_note),
+      show_management_axes = VALUES(show_management_axes),
       updated_at = CURRENT_TIMESTAMP(3)`,
     [
       payload.heroEyebrow,
@@ -66,6 +105,15 @@ export async function upsertIntendenciaContentRow(payload) {
       payload.contactEmail,
       payload.contactPhone,
       payload.officeHours,
+      payload.showMayorPhoto ? 1 : 0,
+      payload.showMayorRole ? 1 : 0,
+      payload.showMayorBio ? 1 : 0,
+      payload.showContactPanel ? 1 : 0,
+      payload.showContactEmail ? 1 : 0,
+      payload.showContactPhone ? 1 : 0,
+      payload.showOfficeHours ? 1 : 0,
+      payload.showContactNote ? 1 : 0,
+      payload.showManagementAxes ? 1 : 0,
     ],
   )
   return getIntendenciaContentRow()
