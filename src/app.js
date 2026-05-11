@@ -16,6 +16,7 @@ import legisladorEsteRoutes from './routes/legisladorEste.routes.js'
 import concejoDeliberanteRoutes from './routes/concejoDeliberante.routes.js'
 import ofertaAcademicaRoutes from './routes/ofertaAcademica.routes.js'
 import eventRoutes from './routes/event.routes.js'
+import searchRoutes from './routes/search.routes.js'
 import sitePageBannerRoutes from './routes/sitePageBanner.routes.js'
 import { pingDb } from './config/db.js'
 import { corsOriginOption } from './config/cors.js'
@@ -67,6 +68,7 @@ app.use('/api/oferta-academica', ofertaAcademicaRoutes)
 app.use('/api/site-page-banners', sitePageBannerRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/news', newsRoutes)
+app.use('/api/search', searchRoutes)
 
 app.use(notFoundHandler)
 app.use(errorHandler)

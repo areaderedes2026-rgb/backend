@@ -9,6 +9,7 @@ import {
 import { AppError } from '../utils/AppError.js'
 import { slugify } from '../utils/slugify.js'
 import { assertOptimisticLock } from '../utils/concurrency.js'
+import { isPublicEventStillVisible } from '../utils/publicEventVisibility.js'
 
 function cleanText(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -63,7 +64,9 @@ function sanitizePayload(payload) {
 }
 
 export async function listPublicEvents() {
-  return listEventsRows({ onlyActive: true })
+  const rows = await listEventsRows({ onlyActive: true })
+  const now = Date.now()
+  return rows.filter((row) => isPublicEventStillVisible(row.eventDate, now))
 }
 
 export async function listAdminEvents() {
