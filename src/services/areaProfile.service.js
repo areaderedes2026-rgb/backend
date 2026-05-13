@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { findAreaProfileBySlug, upsertAreaProfileBySlug } from '../models/areaProfile.model.js'
 import { findAreaBySlug } from '../models/area.model.js'
 import { AppError } from '../utils/AppError.js'
@@ -36,6 +37,35 @@ function slugFromSchoolName(name, idx) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
   return s || `escuela-${idx}`
+}
+
+function cleanServiceId(raw) {
+  const id = cleanString(raw, 120)
+  if (!id) return ''
+  return /^[a-zA-Z0-9_.-]+$/.test(id) ? id : ''
+}
+
+function sanitizeServiceItem(item) {
+  const title = cleanString(item?.title, 180)
+  const description = cleanString(item?.description, 2200)
+  const mode = cleanString(item?.mode, 140)
+  const imageUrl = cleanUrl(item?.imageUrl, 2048)
+  const personInCharge = cleanString(item?.personInCharge, 200)
+  const generalObjective = cleanString(item?.generalObjective, 3000)
+  let id = cleanServiceId(item?.id)
+  if (!id) id = randomUUID()
+  if (!title && !description && !mode && !imageUrl && !personInCharge && !generalObjective) {
+    return null
+  }
+  return {
+    id,
+    title,
+    description,
+    mode,
+    imageUrl,
+    personInCharge,
+    generalObjective,
+  }
 }
 
 function sanitizeSchoolsSection(input) {
@@ -90,17 +120,7 @@ function sanitizePayload(payload) {
       phone: '',
       officeHours: '',
     },
-    serviceBlocks: sanitizeItems(
-      payload?.serviceBlocks,
-      (item) => {
-        const title = cleanString(item?.title, 180)
-        const description = cleanString(item?.description, 2200)
-        const mode = cleanString(item?.mode, 140)
-        if (!title && !description && !mode) return null
-        return { title, description, mode }
-      },
-      30,
-    ),
+    serviceBlocks: sanitizeItems(payload?.serviceBlocks, sanitizeServiceItem, 30),
     initiatives: [],
     contactCards: sanitizeItems(
       payload?.contactCards,
