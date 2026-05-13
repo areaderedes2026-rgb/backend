@@ -86,9 +86,9 @@ function sanitizePayload(payload) {
       role: cleanString(directorIn.role, 160),
       bio: cleanString(directorIn.bio, 3000),
       photoUrl: cleanUrl(directorIn.photoUrl, 2048),
-      email: cleanString(directorIn.email, 180),
-      phone: cleanString(directorIn.phone, 80),
-      officeHours: cleanString(directorIn.officeHours, 140),
+      email: '',
+      phone: '',
+      officeHours: '',
     },
     serviceBlocks: sanitizeItems(
       payload?.serviceBlocks,
@@ -101,16 +101,7 @@ function sanitizePayload(payload) {
       },
       30,
     ),
-    initiatives: sanitizeItems(
-      payload?.initiatives,
-      (item) => {
-        const title = cleanString(item?.title, 180)
-        const description = cleanString(item?.description, 2200)
-        if (!title && !description) return null
-        return { title, description }
-      },
-      30,
-    ),
+    initiatives: [],
     contactCards: sanitizeItems(
       payload?.contactCards,
       (item) => {
