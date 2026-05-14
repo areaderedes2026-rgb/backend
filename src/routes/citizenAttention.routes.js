@@ -32,7 +32,12 @@ router.post(
     body('lastName').trim().notEmpty().isLength({ max: 120 }),
     body('dni').trim().notEmpty().isLength({ max: 20 }),
     body('email').optional({ checkFalsy: true }).trim().isEmail().isLength({ max: 180 }),
-    body('phone').optional({ checkFalsy: true }).trim().isLength({ max: 80 }),
+    body('phone')
+      .trim()
+      .notEmpty()
+      .withMessage('El teléfono es obligatorio.')
+      .isLength({ min: 6, max: 80 })
+      .withMessage('Ingresá un teléfono válido (entre 6 y 80 caracteres).'),
     body('topic').trim().notEmpty().isLength({ max: 40 }),
     body('message').trim().notEmpty().isLength({ min: 12, max: 5000 }),
     validate,

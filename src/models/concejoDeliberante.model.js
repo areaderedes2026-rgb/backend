@@ -11,6 +11,18 @@ function parseJsonSafe(value, fallback) {
   }
 }
 
+/** Quita campos heredados (p. ej. bloque político) que ya no se usan en el portal. */
+function sanitizeMembersJson(list) {
+  if (!Array.isArray(list)) return []
+  return list
+    .map((m) => {
+      if (!m || typeof m !== 'object') return null
+      const { block: _b, ...rest } = m
+      return rest
+    })
+    .filter(Boolean)
+}
+
 function mapConcejoDeliberanteRow(row) {
   if (!row) return null
   return {
@@ -32,9 +44,9 @@ function mapConcejoDeliberanteRow(row) {
     contactPhone: row.contact_phone || '',
     contactAddress: row.contact_address || '',
     contactHours: row.contact_hours || '',
-    blocks: parseJsonSafe(row.blocks_json, []),
-    members: parseJsonSafe(row.members_json, []),
-    commissions: parseJsonSafe(row.commissions_json, []),
+    blocks: [],
+    members: sanitizeMembersJson(parseJsonSafe(row.members_json, [])),
+    commissions: [],
     updatedAt: row.updated_at || null,
   }
 }

@@ -141,6 +141,9 @@ function sanitizeInquiryPayload(payload) {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new AppError('El correo electrónico no es válido.', 400)
   }
+  if (!phone || phone.length < 6) {
+    throw new AppError('El teléfono es obligatorio (al menos 6 caracteres).', 400)
+  }
   if (!topic) throw new AppError('El tema de la consulta es obligatorio.', 400)
   if (!message || message.length < 12) {
     throw new AppError('El mensaje debe tener al menos 12 caracteres.', 400)
