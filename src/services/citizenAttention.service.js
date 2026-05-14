@@ -5,6 +5,7 @@ import {
   getCitizenAttentionContentRow,
   listCitizenInquiriesRows,
   updateCitizenInquiryStatusRow,
+  updateInquiryWhatsappMessageRow,
   upsertCitizenAttentionContentRow,
 } from '../models/citizenAttention.model.js'
 import { AppError } from '../utils/AppError.js'
@@ -169,7 +170,44 @@ export async function saveCitizenAttentionContent(payload) {
   const current = await getCitizenAttentionContentRow()
   assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de atención ciudadana')
   const data = sanitizeContentPayload(payload)
+  if (Object.prototype.hasOwnProperty.call(payload || {}, 'inquiryWhatsappMessage')) {
+    const raw = cleanMultiline(payload?.inquiryWhatsappMessage, 3500)
+    data.inquiryWhatsappMessage = raw && raw.trim() ? raw : null
+  } else {
+    const preserved = current?.inquiryWhatsappMessage
+    data.inquiryWhatsappMessage =
+      preserved != null && String(preserved).trim() !== '' ? String(preserved).trim() : null
+  }
   return upsertCitizenAttentionContentRow(data)
+}
+
+export async function getInquiryWhatsappTemplate() {
+  const row = await getCitizenAttentionContentRow()
+  if (!row) {
+    return { message: '', updatedAt: null }
+  }
+  return {
+    message: row.inquiryWhatsappMessage || '',
+    updatedAt: row.updatedAt,
+  }
+}
+
+export async function saveInquiryWhatsappTemplate({ message, expectedUpdatedAt }) {
+  const current = await getCitizenAttentionContentRow()
+  if (!current) {
+    throw new AppError(
+      'Todavía no hay contenido de Atención al ciudadano. Guardalo una vez desde esa sección y reintentá.',
+      404,
+    )
+  }
+  assertOptimisticLock(expectedUpdatedAt, current.updatedAt, 'plantilla de WhatsApp')
+  const cleaned = cleanMultiline(message, 3500)
+  await updateInquiryWhatsappMessageRow(cleaned || '')
+  const next = await getCitizenAttentionContentRow()
+  return {
+    message: next?.inquiryWhatsappMessage || '',
+    updatedAt: next?.updatedAt,
+  }
 }
 
 export async function createCitizenInquiry(payload) {

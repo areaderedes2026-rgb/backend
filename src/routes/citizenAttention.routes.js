@@ -4,10 +4,12 @@ import {
   deleteCitizenInquiryCtrl,
   getCitizenAttentionContentCtrl,
   getCitizenInquiryAdminCtrl,
+  getInquiryWhatsappTemplateCtrl,
   listCitizenInquiriesAdminCtrl,
   patchCitizenInquiryStatusCtrl,
   postCitizenInquiryCtrl,
   putCitizenAttentionContentCtrl,
+  putInquiryWhatsappTemplateCtrl,
 } from '../controllers/citizenAttention.controller.js'
 import { authenticate, requireStaff } from '../middlewares/auth.middleware.js'
 import { createRateLimiter } from '../middlewares/rateLimit.middleware.js'
@@ -23,6 +25,25 @@ const inquiryRateLimit = createRateLimiter({
 router.get('/content', getCitizenAttentionContentCtrl)
 
 router.put('/content', authenticate, requireStaff, putCitizenAttentionContentCtrl)
+
+router.get(
+  '/admin/inquiry-whatsapp-message',
+  authenticate,
+  requireStaff,
+  getInquiryWhatsappTemplateCtrl,
+)
+
+router.put(
+  '/admin/inquiry-whatsapp-message',
+  authenticate,
+  requireStaff,
+  [
+    body('message').optional().isString().isLength({ max: 3500 }),
+    body('expectedUpdatedAt').optional({ nullable: true }),
+    validate,
+  ],
+  putInquiryWhatsappTemplateCtrl,
+)
 
 router.post(
   '/inquiries',

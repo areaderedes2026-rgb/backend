@@ -3,20 +3,42 @@ import {
   createCitizenInquiry,
   getCitizenAttentionContent,
   getCitizenInquiryAdmin,
+  getInquiryWhatsappTemplate,
   listCitizenInquiriesAdmin,
   removeCitizenInquiry,
   saveCitizenAttentionContent,
+  saveInquiryWhatsappTemplate,
   setCitizenInquiryStatus,
 } from '../services/citizenAttention.service.js'
 
+function stripInternalContentFields(content) {
+  if (!content) return null
+  const { inquiryWhatsappMessage, ...rest } = content
+  return rest
+}
+
 export const getCitizenAttentionContentCtrl = asyncHandler(async (req, res) => {
   const content = await getCitizenAttentionContent()
-  res.status(200).json({ ok: true, content })
+  res.status(200).json({ ok: true, content: stripInternalContentFields(content) })
 })
 
 export const putCitizenAttentionContentCtrl = asyncHandler(async (req, res) => {
   const content = await saveCitizenAttentionContent(req.body || {})
-  res.status(200).json({ ok: true, content })
+  res.status(200).json({ ok: true, content: stripInternalContentFields(content) })
+})
+
+export const getInquiryWhatsappTemplateCtrl = asyncHandler(async (req, res) => {
+  const data = await getInquiryWhatsappTemplate()
+  res.status(200).json({ ok: true, message: data.message, updatedAt: data.updatedAt })
+})
+
+export const putInquiryWhatsappTemplateCtrl = asyncHandler(async (req, res) => {
+  const body = req.body || {}
+  const data = await saveInquiryWhatsappTemplate({
+    message: body.message,
+    expectedUpdatedAt: body.expectedUpdatedAt,
+  })
+  res.status(200).json({ ok: true, message: data.message, updatedAt: data.updatedAt })
 })
 
 export const postCitizenInquiryCtrl = asyncHandler(async (req, res) => {

@@ -29,6 +29,8 @@ function mapContentRow(row) {
     finalPrimaryHref: row.final_primary_href || '',
     finalSecondaryLabel: row.final_secondary_label || '',
     finalSecondaryHref: row.final_secondary_href || '',
+    inquiryWhatsappMessage:
+      row.inquiry_whatsapp_message != null ? String(row.inquiry_whatsapp_message) : '',
     updatedAt: row.updated_at,
   }
 }
@@ -75,8 +77,9 @@ export async function upsertCitizenAttentionContentRow(payload) {
       final_primary_label,
       final_primary_href,
       final_secondary_label,
-      final_secondary_href
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      final_secondary_href,
+      inquiry_whatsapp_message
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
@@ -93,6 +96,7 @@ export async function upsertCitizenAttentionContentRow(payload) {
       final_primary_href = VALUES(final_primary_href),
       final_secondary_label = VALUES(final_secondary_label),
       final_secondary_href = VALUES(final_secondary_href),
+      inquiry_whatsapp_message = VALUES(inquiry_whatsapp_message),
       updated_at = CURRENT_TIMESTAMP(3)`,
     [
       payload.heroEyebrow,
@@ -110,7 +114,21 @@ export async function upsertCitizenAttentionContentRow(payload) {
       payload.finalPrimaryHref,
       payload.finalSecondaryLabel,
       payload.finalSecondaryHref,
+      payload.inquiryWhatsappMessage === '' || payload.inquiryWhatsappMessage == null
+        ? null
+        : payload.inquiryWhatsappMessage,
     ],
+  )
+  return getCitizenAttentionContentRow()
+}
+
+export async function updateInquiryWhatsappMessageRow(message) {
+  await pool.query(
+    `UPDATE citizen_attention_content
+     SET inquiry_whatsapp_message = ?,
+         updated_at = CURRENT_TIMESTAMP(3)
+     WHERE id = 1`,
+    [message === '' ? null : message],
   )
   return getCitizenAttentionContentRow()
 }
