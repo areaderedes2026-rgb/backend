@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { findUserByUsername } from '../models/user.model.js'
+import { listPermissionsByUserId } from '../models/userResourcePermission.model.js'
 import { signToken } from '../utils/jwt.js'
 import { mapUserPublic } from '../utils/mapNews.js'
 import { AppError } from '../utils/AppError.js'
@@ -14,7 +15,10 @@ export async function login(username, password) {
     throw new AppError('Credenciales inválidas.', 401)
   }
 
-  const publicUser = mapUserPublic(user)
+  const publicUser = {
+    ...mapUserPublic(user),
+    permissions: await listPermissionsByUserId(user.id),
+  }
   const token = signToken({
     sub: user.id,
     username: user.username,

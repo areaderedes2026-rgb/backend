@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { findAreaProfileBySlug, upsertAreaProfileBySlug } from '../models/areaProfile.model.js'
 import { findAreaBySlug } from '../models/area.model.js'
+import {
+  listAreaServicePermissionsForUser,
+  userHasAreaServicePermission,
+} from '../models/userResourcePermission.model.js'
 import { AppError } from '../utils/AppError.js'
 import { assertOptimisticLock } from '../utils/concurrency.js'
 
@@ -66,6 +70,20 @@ function sanitizeServiceItem(item) {
     personInCharge,
     generalObjective,
   }
+}
+
+function sanitizeServiceUpdate(item, current) {
+  const merged = {
+    ...current,
+    ...item,
+    id: current.id,
+  }
+  const next = sanitizeServiceItem(merged)
+  if (!next) {
+    throw new AppError('El servicio no puede quedar vacío.', 400)
+  }
+  next.id = current.id
+  return next
 }
 
 function sanitizeSchoolsSection(input) {
@@ -174,4 +192,92 @@ export async function saveAreaProfile(slug, payload) {
   assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'perfil del área')
   const data = sanitizePayload(payload)
   return upsertAreaProfileBySlug(validSlug, data)
+}
+
+async function assertAreaServiceAccess(user, areaSlug, serviceId) {
+  if (!user) throw new AppError('No autorizado.', 401)
+  if (user.role === 'admin' || user.role === 'editor') return
+  if (user.role !== 'area_service_editor') {
+    throw new AppError('No tenés permiso para esta acción.', 403)
+  }
+  const ok = await userHasAreaServicePermission(user.id, areaSlug, serviceId)
+  if (!ok) throw new AppError('No tenés permiso para editar este servicio.', 403)
+}
+
+function findServiceInProfile(profile, serviceId) {
+  const id = cleanServiceId(serviceId)
+  if (!id) throw new AppError('Servicio inválido.', 400)
+  const service = (profile?.serviceBlocks || []).find((item) => String(item?.id || '') === id)
+  if (!service) throw new AppError('Servicio no encontrado.', 404)
+  return service
+}
+
+export async function getAreaProfileService(slug, serviceId, user) {
+  const validSlug = assertValidSlug(slug)
+  const area = await findAreaBySlug(validSlug, { includeInactive: true })
+  if (!area) throw new AppError('Área no encontrada.', 404)
+  await assertAreaServiceAccess(user, validSlug, serviceId)
+  const profile = await findAreaProfileBySlug(validSlug)
+  if (!profile) throw new AppError('Perfil del área no encontrado.', 404)
+  const service = findServiceInProfile(profile, serviceId)
+  return {
+    area: {
+      slug: validSlug,
+      title: area.title || validSlug,
+    },
+    service,
+    updatedAt: profile.updatedAt,
+  }
+}
+
+export async function saveAreaProfileService(slug, serviceId, payload, user) {
+  const validSlug = assertValidSlug(slug)
+  const area = await findAreaBySlug(validSlug, { includeInactive: true })
+  if (!area) throw new AppError('Área no encontrada.', 404)
+  await assertAreaServiceAccess(user, validSlug, serviceId)
+  const current = await findAreaProfileBySlug(validSlug)
+  if (!current) throw new AppError('Perfil del área no encontrado.', 404)
+  assertOptimisticLock(payload?.expectedUpdatedAt, current.updatedAt, 'servicio del área')
+  const currentService = findServiceInProfile(current, serviceId)
+  const nextService = sanitizeServiceUpdate(payload?.service || payload || {}, currentService)
+  const nextProfile = {
+    ...current,
+    serviceBlocks: current.serviceBlocks.map((item) =>
+      String(item?.id || '') === String(serviceId) ? nextService : item,
+    ),
+  }
+  const saved = await upsertAreaProfileBySlug(validSlug, nextProfile)
+  const service = findServiceInProfile(saved, serviceId)
+  return {
+    area: {
+      slug: validSlug,
+      title: area.title || validSlug,
+    },
+    service,
+    updatedAt: saved.updatedAt,
+  }
+}
+
+export async function listMyAreaProfileServices(user) {
+  if (!user) throw new AppError('No autorizado.', 401)
+  if (user.role === 'admin' || user.role === 'editor') return []
+  const permissions = await listAreaServicePermissionsForUser(user.id)
+  const out = []
+  for (const permission of permissions) {
+    const area = await findAreaBySlug(permission.areaSlug, { includeInactive: true })
+    const profile = await findAreaProfileBySlug(permission.areaSlug)
+    const service = (profile?.serviceBlocks || []).find(
+      (item) => String(item?.id || '') === permission.resourceId,
+    )
+    if (!area || !service) continue
+    out.push({
+      area: {
+        slug: permission.areaSlug,
+        title: area.title || permission.areaSlug,
+      },
+      service,
+      updatedAt: profile.updatedAt,
+    })
+  }
+  return out
 }

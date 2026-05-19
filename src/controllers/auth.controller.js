@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import { login } from '../services/auth.service.js'
 import { mapUserPublic } from '../utils/mapNews.js'
 import { findUserById } from '../models/user.model.js'
+import { listPermissionsByUserId } from '../models/userResourcePermission.model.js'
 import { AppError } from '../utils/AppError.js'
 
 export const postLogin = asyncHandler(async (req, res) => {
@@ -21,6 +22,9 @@ export const getMe = asyncHandler(async (req, res) => {
   }
   res.status(200).json({
     ok: true,
-    user: mapUserPublic(row),
+    user: {
+      ...mapUserPublic(row),
+      permissions: await listPermissionsByUserId(req.user.id),
+    },
   })
 })

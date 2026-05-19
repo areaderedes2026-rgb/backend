@@ -10,7 +10,10 @@ import {
 } from '../controllers/area.controller.js'
 import {
   getAreaProfileBySlug,
+  getAreaProfileServiceById,
+  getMyAreaProfileServices,
   putAreaProfileBySlug,
+  putAreaProfileServiceById,
 } from '../controllers/areaProfile.controller.js'
 import {
   getAreasPageContentCtrl,
@@ -37,6 +40,7 @@ const officeSlugValidator = [
 ]
 
 router.get('/', listAreas)
+router.get('/profile-services/mine', authenticate, getMyAreaProfileServices)
 router.get('/admin/list', authenticate, requireStaff, listAreasAdmin)
 router.get('/page-content', getAreasPageContentCtrl)
 router.put('/page-content', authenticate, requireStaff, putAreasPageContentCtrl)
@@ -94,6 +98,31 @@ router.get('/:slug/offices', slugValidator, listPublicAreaOffices)
 router.get('/:slug/offices/:officeSlug', slugValidator, officeSlugValidator, getPublicAreaOffice)
 
 router.get('/:slug/profile', slugValidator, getAreaProfileBySlug)
+router.get(
+  '/:slug/profile/services/:serviceId',
+  authenticate,
+  slugValidator,
+  [param('serviceId').trim().isLength({ min: 1, max: 120 }), validate],
+  getAreaProfileServiceById,
+)
+router.put(
+  '/:slug/profile/services/:serviceId',
+  authenticate,
+  slugValidator,
+  [
+    param('serviceId').trim().isLength({ min: 1, max: 120 }),
+    body('expectedUpdatedAt').optional({ nullable: true }).isISO8601(),
+    body('service').optional().isObject(),
+    body('service.title').optional().isString().isLength({ max: 180 }),
+    body('service.description').optional().isString().isLength({ max: 2200 }),
+    body('service.mode').optional().isString().isLength({ max: 140 }),
+    body('service.imageUrl').optional().isString().isLength({ max: 2048 }),
+    body('service.personInCharge').optional().isString().isLength({ max: 200 }),
+    body('service.generalObjective').optional().isString().isLength({ max: 3000 }),
+    validate,
+  ],
+  putAreaProfileServiceById,
+)
 router.put(
   '/:slug/profile',
   authenticate,
