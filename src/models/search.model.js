@@ -57,10 +57,9 @@ export async function searchPublicDatabase(raw) {
     `SELECT a.slug, a.title, ap.services_json
      FROM area_profiles ap
      INNER JOIN areas a ON a.slug = ap.slug AND a.is_active = 1
-     WHERE ap.services_json LIKE ?
      ORDER BY a.sort_order ASC, a.title ASC
      LIMIT ?`,
-    [like, 20],
+    [80],
   )
 
   const [tourismRows] = await pool.query(

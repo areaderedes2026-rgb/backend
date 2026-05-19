@@ -46,6 +46,7 @@ function projectSearchText(project) {
 
 function serviceSearchText(service) {
   return [
+    service?.id,
     service?.title,
     service?.description,
     service?.mode,
