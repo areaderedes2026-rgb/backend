@@ -9,6 +9,7 @@ import areaRoutes from './routes/area.routes.js'
 import historyRoutes from './routes/history.routes.js'
 import tourismPlaceRoutes from './routes/tourismPlace.routes.js'
 import citizenAttentionRoutes from './routes/citizenAttention.routes.js'
+import municipalServicesRoutes from './routes/municipalServices.routes.js'
 import homeMapRoutes from './routes/homeMap.routes.js'
 import uploadRoutes from './routes/upload.routes.js'
 import intendenciaRoutes from './routes/intendencia.routes.js'
@@ -60,6 +61,7 @@ app.use('/api/areas', areaRoutes)
 app.use('/api/history', historyRoutes)
 app.use('/api/tourism-places', tourismPlaceRoutes)
 app.use('/api/citizen-attention', citizenAttentionRoutes)
+app.use('/api/municipal-services', municipalServicesRoutes)
 app.use('/api/home-map', homeMapRoutes)
 app.use('/api/intendencia', intendenciaRoutes)
 app.use('/api/legislador-este', legisladorEsteRoutes)
