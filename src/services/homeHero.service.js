@@ -22,6 +22,10 @@ function cleanBool(value, fallback = true) {
   return fallback
 }
 
+function cleanAlign(value, fallback = 'left') {
+  return TEXT_ALIGNS.has(value) ? value : fallback
+}
+
 function sanitizeSlide(raw, index) {
   const title = cleanText(raw?.title, 180)
   const imageUrl = cleanText(raw?.imageUrl, 2048)
@@ -33,7 +37,9 @@ function sanitizeSlide(raw, index) {
 
   const fallbackId = `banner-${index + 1}`
   const id = cleanText(raw?.id, 80) || fallbackId
-  const textAlign = TEXT_ALIGNS.has(raw?.textAlign) ? raw.textAlign : 'left'
+  const legacyAlign = cleanAlign(raw?.textAlign, 'left')
+  const desktopTextAlign = cleanAlign(raw?.desktopTextAlign, legacyAlign)
+  const mobileTextAlign = cleanAlign(raw?.mobileTextAlign, desktopTextAlign)
 
   return {
     id,
@@ -53,7 +59,9 @@ function sanitizeSlide(raw, index) {
     showSecondaryButton: cleanBool(raw?.showSecondaryButton, true),
     secondaryLabel: cleanText(raw?.secondaryLabel, 80),
     secondaryHref: cleanText(raw?.secondaryHref, 2048),
-    textAlign,
+    textAlign: desktopTextAlign,
+    desktopTextAlign,
+    mobileTextAlign,
     isActive: cleanBool(raw?.isActive, true),
     sortOrder: Math.max(0, Math.round(cleanNumber(raw?.sortOrder, index * 10))),
   }
