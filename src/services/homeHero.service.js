@@ -3,17 +3,6 @@ import { assertOptimisticLock } from '../utils/concurrency.js'
 
 const TEXT_ALIGNS = new Set(['left', 'center', 'right'])
 const DISPLAY_MODES = new Set(['single', 'carousel'])
-const IMAGE_POSITIONS = new Set([
-  'center',
-  'top',
-  'bottom',
-  'left',
-  'right',
-  'left top',
-  'right top',
-  'left bottom',
-  'right bottom',
-])
 
 function cleanText(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -31,10 +20,6 @@ function cleanBool(value, fallback = true) {
   if (value === 0 || value === '0' || value === 'false') return false
   if (value === 1 || value === '1' || value === 'true') return true
   return fallback
-}
-
-function cleanImagePosition(value, fallback = 'center') {
-  return IMAGE_POSITIONS.has(value) ? value : fallback
 }
 
 function sanitizeSlide(raw, index) {
@@ -58,8 +43,6 @@ function sanitizeSlide(raw, index) {
     imageUrl,
     mobileImageUrl,
     imageAlt: cleanText(raw?.imageAlt, 180),
-    desktopObjectPosition: cleanImagePosition(raw?.desktopObjectPosition),
-    mobileObjectPosition: cleanImagePosition(raw?.mobileObjectPosition),
     overlayOpacity: Math.min(90, Math.max(0, Math.round(cleanNumber(raw?.overlayOpacity, 65)))),
     showEyebrow: cleanBool(raw?.showEyebrow, Boolean(eyebrow)),
     showTitle: cleanBool(raw?.showTitle, Boolean(title)),
