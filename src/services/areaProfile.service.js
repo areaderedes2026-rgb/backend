@@ -26,8 +26,8 @@ function cleanUrl(value, maxLen = 2048) {
 function sanitizeItems(list, mapper, maxItems = 20) {
   if (!Array.isArray(list)) return []
   const out = []
-  for (const item of list.slice(0, maxItems)) {
-    const mapped = mapper(item)
+  for (const [idx, item] of list.slice(0, maxItems).entries()) {
+    const mapped = mapper(item, idx)
     if (mapped) out.push(mapped)
   }
   return out
@@ -43,10 +43,43 @@ function slugFromSchoolName(name, idx) {
   return s || `escuela-${idx}`
 }
 
+function slugFromProjectTitle(title, idx) {
+  const s = cleanString(title, 120)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+  return s || `proyecto-${idx}`
+}
+
 function cleanServiceId(raw) {
   const id = cleanString(raw, 120)
   if (!id) return ''
   return /^[a-zA-Z0-9_.-]+$/.test(id) ? id : ''
+}
+
+function sanitizeServiceProject(item, idx = 0) {
+  const title = cleanString(item?.title, 180)
+  const description = cleanString(item?.description, 2200)
+  const status = cleanString(item?.status, 120)
+  const imageUrl = cleanUrl(item?.imageUrl, 2048)
+  const linkUrl = cleanUrl(item?.linkUrl, 2048)
+  const linkLabel = cleanString(item?.linkLabel, 80)
+  let id = cleanString(item?.id, 120)
+  if (!id) id = slugFromProjectTitle(title, idx)
+  if (!title && !description && !status && !imageUrl && !linkUrl && !linkLabel) {
+    return null
+  }
+  return {
+    id,
+    title,
+    description,
+    status,
+    imageUrl,
+    linkUrl,
+    linkLabel,
+  }
 }
 
 function sanitizeServiceItem(item) {
@@ -56,9 +89,22 @@ function sanitizeServiceItem(item) {
   const imageUrl = cleanUrl(item?.imageUrl, 2048)
   const personInCharge = cleanString(item?.personInCharge, 200)
   const generalObjective = cleanString(item?.generalObjective, 3000)
+  const projects = sanitizeItems(
+    item?.projects,
+    (project, idx) => sanitizeServiceProject(project, idx),
+    40,
+  )
   let id = cleanServiceId(item?.id)
   if (!id) id = randomUUID()
-  if (!title && !description && !mode && !imageUrl && !personInCharge && !generalObjective) {
+  if (
+    !title &&
+    !description &&
+    !mode &&
+    !imageUrl &&
+    !personInCharge &&
+    !generalObjective &&
+    projects.length === 0
+  ) {
     return null
   }
   return {
@@ -69,6 +115,7 @@ function sanitizeServiceItem(item) {
     imageUrl,
     personInCharge,
     generalObjective,
+    projects,
   }
 }
 
