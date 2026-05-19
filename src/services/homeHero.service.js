@@ -3,6 +3,17 @@ import { assertOptimisticLock } from '../utils/concurrency.js'
 
 const TEXT_ALIGNS = new Set(['left', 'center', 'right'])
 const DISPLAY_MODES = new Set(['single', 'carousel'])
+const IMAGE_POSITIONS = new Set([
+  'center',
+  'top',
+  'bottom',
+  'left',
+  'right',
+  'left top',
+  'right top',
+  'left bottom',
+  'right bottom',
+])
 
 function cleanText(value, maxLen = 0) {
   const out = String(value || '').trim()
@@ -22,13 +33,18 @@ function cleanBool(value, fallback = true) {
   return fallback
 }
 
+function cleanImagePosition(value, fallback = 'center') {
+  return IMAGE_POSITIONS.has(value) ? value : fallback
+}
+
 function sanitizeSlide(raw, index) {
   const title = cleanText(raw?.title, 180)
   const imageUrl = cleanText(raw?.imageUrl, 2048)
+  const mobileImageUrl = cleanText(raw?.mobileImageUrl, 2048)
   const eyebrow = cleanText(raw?.eyebrow, 120)
   const subtitle = cleanText(raw?.subtitle, 600)
 
-  if (!title && !imageUrl && !eyebrow && !subtitle) return null
+  if (!title && !imageUrl && !mobileImageUrl && !eyebrow && !subtitle) return null
 
   const fallbackId = `banner-${index + 1}`
   const id = cleanText(raw?.id, 80) || fallbackId
@@ -40,7 +56,11 @@ function sanitizeSlide(raw, index) {
     title,
     subtitle,
     imageUrl,
+    mobileImageUrl,
     imageAlt: cleanText(raw?.imageAlt, 180),
+    desktopObjectPosition: cleanImagePosition(raw?.desktopObjectPosition),
+    mobileObjectPosition: cleanImagePosition(raw?.mobileObjectPosition),
+    overlayOpacity: Math.min(90, Math.max(0, Math.round(cleanNumber(raw?.overlayOpacity, 65)))),
     showEyebrow: cleanBool(raw?.showEyebrow, Boolean(eyebrow)),
     showTitle: cleanBool(raw?.showTitle, Boolean(title)),
     showSubtitle: cleanBool(raw?.showSubtitle, Boolean(subtitle)),
