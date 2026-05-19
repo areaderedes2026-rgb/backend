@@ -53,6 +53,16 @@ export async function searchPublicDatabase(raw) {
     [like, like, lim],
   )
 
+  const [areaServiceRows] = await pool.query(
+    `SELECT a.slug, a.title, ap.services_json
+     FROM area_profiles ap
+     INNER JOIN areas a ON a.slug = ap.slug AND a.is_active = 1
+     WHERE ap.services_json LIKE ?
+     ORDER BY a.sort_order ASC, a.title ASC
+     LIMIT ?`,
+    [like, 20],
+  )
+
   const [tourismRows] = await pool.query(
     `SELECT t.slug, t.name, t.short_description AS snippet
      FROM tourism_places t
@@ -63,5 +73,5 @@ export async function searchPublicDatabase(raw) {
     [like, like, like, lim],
   )
 
-  return { newsRows, eventRows, areaRows, profileRows, tourismRows }
+  return { newsRows, eventRows, areaRows, profileRows, areaServiceRows, tourismRows }
 }
