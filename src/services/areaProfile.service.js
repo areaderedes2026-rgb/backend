@@ -23,6 +23,12 @@ function cleanUrl(value, maxLen = 2048) {
   return ''
 }
 
+function cleanSortOrder(value) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return 0
+  return Math.max(0, Math.round(n))
+}
+
 function sanitizeItems(list, mapper, maxItems = 20) {
   if (!Array.isArray(list)) return []
   const out = []
@@ -82,13 +88,17 @@ function sanitizeServiceProject(item, idx = 0) {
   }
 }
 
-function sanitizeServiceItem(item) {
+function sanitizeServiceItem(item, idx = 0) {
   const title = cleanString(item?.title, 180)
   const description = cleanString(item?.description, 2200)
   const mode = cleanString(item?.mode, 140)
   const imageUrl = cleanUrl(item?.imageUrl, 2048)
   const personInCharge = cleanString(item?.personInCharge, 200)
   const generalObjective = cleanString(item?.generalObjective, 3000)
+  const sortOrder =
+    item?.sortOrder == null || item?.sortOrder === ''
+      ? (idx + 1) * 10
+      : cleanSortOrder(item?.sortOrder)
   const projects = sanitizeItems(
     item?.projects,
     (project, idx) => sanitizeServiceProject(project, idx),
@@ -115,6 +125,7 @@ function sanitizeServiceItem(item) {
     imageUrl,
     personInCharge,
     generalObjective,
+    sortOrder,
     projects,
   }
 }
@@ -131,6 +142,35 @@ function sanitizeServiceUpdate(item, current) {
   }
   next.id = current.id
   return next
+}
+
+function preserveServicePriorityForNonAdmin(nextData, current, user) {
+  if (user?.role === 'admin') return nextData
+  const previousById = new Map(
+    (current?.serviceBlocks || []).map((service) => [String(service?.id || ''), service]),
+  )
+  const maxOrder = (current?.serviceBlocks || []).reduce(
+    (max, service) => Math.max(max, cleanSortOrder(service?.sortOrder)),
+    0,
+  )
+  let newOrder = maxOrder
+  return {
+    ...nextData,
+    serviceBlocks: nextData.serviceBlocks.map((service) => {
+      const previous = previousById.get(String(service?.id || ''))
+      if (previous) {
+        return {
+          ...service,
+          sortOrder: cleanSortOrder(previous.sortOrder),
+        }
+      }
+      newOrder += 10
+      return {
+        ...service,
+        sortOrder: newOrder,
+      }
+    }),
+  }
 }
 
 function sanitizeSchoolsSection(input) {
@@ -231,13 +271,13 @@ export async function getAreaProfile(slug) {
   return findAreaProfileBySlug(validSlug)
 }
 
-export async function saveAreaProfile(slug, payload) {
+export async function saveAreaProfile(slug, payload, user = null) {
   const validSlug = assertValidSlug(slug)
   const area = await findAreaBySlug(validSlug, { includeInactive: true })
   if (!area) throw new AppError('Área no encontrada.', 404)
   const current = await findAreaProfileBySlug(validSlug)
   assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'perfil del área')
-  const data = sanitizePayload(payload)
+  const data = preserveServicePriorityForNonAdmin(sanitizePayload(payload), current, user)
   return upsertAreaProfileBySlug(validSlug, data)
 }
 
@@ -287,6 +327,9 @@ export async function saveAreaProfileService(slug, serviceId, payload, user) {
   assertOptimisticLock(payload?.expectedUpdatedAt, current.updatedAt, 'servicio del área')
   const currentService = findServiceInProfile(current, serviceId)
   const nextService = sanitizeServiceUpdate(payload?.service || payload || {}, currentService)
+  if (user?.role !== 'admin') {
+    nextService.sortOrder = cleanSortOrder(currentService.sortOrder)
+  }
   const nextProfile = {
     ...current,
     serviceBlocks: current.serviceBlocks.map((item) =>

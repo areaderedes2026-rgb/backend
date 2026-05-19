@@ -13,7 +13,7 @@ export const getAreaProfileBySlug = asyncHandler(async (req, res) => {
 })
 
 export const putAreaProfileBySlug = asyncHandler(async (req, res) => {
-  const profile = await saveAreaProfile(req.params.slug, req.body || {})
+  const profile = await saveAreaProfile(req.params.slug, req.body || {}, req.user)
   res.status(200).json({ ok: true, profile })
 })
 

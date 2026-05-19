@@ -119,6 +119,7 @@ router.put(
     body('service.imageUrl').optional().isString().isLength({ max: 2048 }),
     body('service.personInCharge').optional().isString().isLength({ max: 200 }),
     body('service.generalObjective').optional().isString().isLength({ max: 3000 }),
+    body('service.sortOrder').optional().isInt({ min: 0 }),
     body('service.projects').optional().isArray({ max: 40 }),
     body('service.projects.*.id').optional().isString().isLength({ max: 120 }),
     body('service.projects.*.title').optional().isString().isLength({ max: 180 }),
