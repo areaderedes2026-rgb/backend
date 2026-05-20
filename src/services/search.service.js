@@ -165,7 +165,7 @@ export async function runGlobalSearch(normalized) {
           id: `${slug}:${serviceId}`,
           title,
           subtitle: serviceSubtitle(String(r.title || slug), service, normalizedQuery),
-          path: `/areas/${encodeURIComponent(slug)}?serviceId=${encodeURIComponent(serviceId)}#servicios-area`,
+          path: `/areas/${encodeURIComponent(slug)}/servicios/${encodeURIComponent(serviceId)}`,
         })
       })
   }
@@ -177,7 +177,7 @@ export async function runGlobalSearch(normalized) {
       id: slug,
       title: String(r.name || ''),
       subtitle: excerpt(r.snippet, 120),
-      path: `/history/lugares/${encodeURIComponent(slug)}`,
+      path: `/turismo/lugares/${encodeURIComponent(slug)}`,
     })
   }
 
