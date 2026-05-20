@@ -88,6 +88,36 @@ function sanitizeServiceProject(item, idx = 0) {
   }
 }
 
+function sanitizeServiceContactItem(item, idx = 0) {
+  const allowed = new Set(['phone', 'email', 'whatsapp', 'link', 'text'])
+  const typeRaw = cleanString(item?.type, 20).toLowerCase()
+  const type = allowed.has(typeRaw) ? typeRaw : 'text'
+  const label = cleanString(item?.label, 80)
+  const value = cleanString(item?.value, 200)
+  const note = cleanString(item?.note, 160)
+  const url = cleanUrl(item?.url, 2048)
+  let id = cleanString(item?.id, 120)
+  if (!id) id = `contact-${idx + 1}`
+  if (!label && !value && !note && !url) return null
+  return { id, type, label, value, note, url }
+}
+
+function sanitizeServiceContactSection(input) {
+  if (!input || typeof input !== 'object') {
+    return { enabled: false, title: 'Contacto', items: [] }
+  }
+  const items = sanitizeItems(
+    input.items,
+    (item, idx) => sanitizeServiceContactItem(item, idx),
+    12,
+  )
+  return {
+    enabled: Boolean(input.enabled),
+    title: cleanString(input.title, 80) || 'Contacto',
+    items,
+  }
+}
+
 function sanitizeServiceItem(item, idx = 0) {
   const title = cleanString(item?.title, 180)
   const description = cleanString(item?.description, 2200)
@@ -104,6 +134,7 @@ function sanitizeServiceItem(item, idx = 0) {
     (project, idx) => sanitizeServiceProject(project, idx),
     40,
   )
+  const contactSection = sanitizeServiceContactSection(item?.contactSection)
   let id = cleanServiceId(item?.id)
   if (!id) id = randomUUID()
   if (
@@ -127,6 +158,7 @@ function sanitizeServiceItem(item, idx = 0) {
     generalObjective,
     sortOrder,
     projects,
+    contactSection,
   }
 }
 
