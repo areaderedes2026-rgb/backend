@@ -15,7 +15,7 @@ const router = Router()
 router.post(
   '/',
   authenticate,
-  requireStaff,
+  requireImageUpload,
   (req, res, next) => {
     uploadNewsImage.single('file')(req, res, (err) => {
       if (err) {
