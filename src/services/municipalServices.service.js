@@ -165,7 +165,12 @@ export async function getServicesPageContentPublic() {
 
 export async function saveServicesPageContent(body) {
   const current = await getServicesPageContentRow()
-  assertOptimisticLock(body?.expectedUpdatedAt, current?.updatedAt, 'contenido de servicios')
+  assertOptimisticLock(
+    body?.expectedUpdatedAt,
+    current?.updatedAt,
+    'contenido de servicios',
+    Boolean(body?.forceOverwrite),
+  )
   const payload = sanitizeContentPayload(body)
   return upsertServicesPageContentRow(payload)
 }

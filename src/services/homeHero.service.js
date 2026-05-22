@@ -91,7 +91,12 @@ export async function getHomeHeroContent() {
 
 export async function saveHomeHeroContent(payload) {
   const current = await getHomeHeroContentRow()
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'hero de inicio')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'hero de inicio',
+    Boolean(payload?.forceOverwrite),
+  )
   const data = sanitizePayload(payload)
   return upsertHomeHeroContentRow(data)
 }

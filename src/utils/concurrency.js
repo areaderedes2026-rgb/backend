@@ -6,7 +6,13 @@ function toMs(value) {
   return Number.isFinite(n) ? n : null
 }
 
-export function assertOptimisticLock(expectedUpdatedAt, currentUpdatedAt, label = 'registro') {
+export function assertOptimisticLock(
+  expectedUpdatedAt,
+  currentUpdatedAt,
+  label = 'registro',
+  forceOverwrite = false,
+) {
+  if (forceOverwrite) return
   const expectedMs = toMs(expectedUpdatedAt)
   const currentMs = toMs(currentUpdatedAt)
   if (expectedMs == null || currentMs == null) return
@@ -18,4 +24,3 @@ export function assertOptimisticLock(expectedUpdatedAt, currentUpdatedAt, label 
     )
   }
 }
-

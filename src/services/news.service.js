@@ -126,7 +126,12 @@ export async function createNewsRecord(payload, createdBy) {
 export async function updateNewsRecord(id, payload, updatedBy) {
   const existing = await findNewsById(Number(id))
   if (!existing) return null
-  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'noticia')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    existing.updated_at,
+    'noticia',
+    Boolean(payload?.forceOverwrite),
+  )
 
   const data = {}
   if (payload.title !== undefined) data.title = String(payload.title).trim()

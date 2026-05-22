@@ -68,7 +68,12 @@ export async function getIntendenciaContent() {
 
 export async function saveIntendenciaContent(payload) {
   const current = await getIntendenciaContentRow()
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de intendencia')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'contenido de intendencia',
+    Boolean(payload?.forceOverwrite),
+  )
   const data = sanitizePayload(payload)
   return upsertIntendenciaContentRow(data)
 }

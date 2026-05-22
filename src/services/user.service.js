@@ -114,7 +114,12 @@ export async function createUserRecord(payload) {
 export async function updateUserRecord(id, payload, { currentUserId }) {
   const existing = await findUserById(Number(id))
   if (!existing) throw new AppError('Usuario no encontrado.', 404)
-  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'usuario')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    existing.updated_at,
+    'usuario',
+    Boolean(payload?.forceOverwrite),
+  )
 
   const data = {}
 

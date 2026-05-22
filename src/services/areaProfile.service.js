@@ -308,7 +308,12 @@ export async function saveAreaProfile(slug, payload, user = null) {
   const area = await findAreaBySlug(validSlug, { includeInactive: true })
   if (!area) throw new AppError('Área no encontrada.', 404)
   const current = await findAreaProfileBySlug(validSlug)
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'perfil del área')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'perfil del área',
+    Boolean(payload?.forceOverwrite),
+  )
   const data = preserveServicePriorityForNonAdmin(sanitizePayload(payload), current, user)
   return upsertAreaProfileBySlug(validSlug, data)
 }
@@ -356,7 +361,12 @@ export async function saveAreaProfileService(slug, serviceId, payload, user) {
   await assertAreaServiceAccess(user, validSlug, serviceId)
   const current = await findAreaProfileBySlug(validSlug)
   if (!current) throw new AppError('Perfil del área no encontrado.', 404)
-  assertOptimisticLock(payload?.expectedUpdatedAt, current.updatedAt, 'servicio del área')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current.updatedAt,
+    'servicio del área',
+    Boolean(payload?.forceOverwrite),
+  )
   const currentService = findServiceInProfile(current, serviceId)
   const nextService = sanitizeServiceUpdate(payload?.service || payload || {}, currentService)
   if (user?.role !== 'admin') {

@@ -155,7 +155,12 @@ export async function getOfertaAcademicaContent() {
 
 export async function saveOfertaAcademicaContent(payload) {
   const current = await getOfertaAcademicaContentRow()
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de oferta académica')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'contenido de oferta académica',
+    Boolean(payload?.forceOverwrite),
+  )
   const data = sanitizePayload(payload)
   return upsertOfertaAcademicaContentRow(data)
 }

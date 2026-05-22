@@ -168,7 +168,12 @@ export async function getCitizenAttentionContent() {
 
 export async function saveCitizenAttentionContent(payload) {
   const current = await getCitizenAttentionContentRow()
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de atención ciudadana')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'contenido de atención ciudadana',
+    Boolean(payload?.forceOverwrite),
+  )
   const data = sanitizeContentPayload(payload)
   if (Object.prototype.hasOwnProperty.call(payload || {}, 'inquiryWhatsappMessage')) {
     const raw = cleanMultiline(payload?.inquiryWhatsappMessage, 3500)
@@ -192,7 +197,11 @@ export async function getInquiryWhatsappTemplate() {
   }
 }
 
-export async function saveInquiryWhatsappTemplate({ message, expectedUpdatedAt }) {
+export async function saveInquiryWhatsappTemplate({
+  message,
+  expectedUpdatedAt,
+  forceOverwrite = false,
+}) {
   const current = await getCitizenAttentionContentRow()
   if (!current) {
     throw new AppError(
@@ -200,7 +209,12 @@ export async function saveInquiryWhatsappTemplate({ message, expectedUpdatedAt }
       404,
     )
   }
-  assertOptimisticLock(expectedUpdatedAt, current.updatedAt, 'plantilla de WhatsApp')
+  assertOptimisticLock(
+    expectedUpdatedAt,
+    current.updatedAt,
+    'plantilla de WhatsApp',
+    Boolean(forceOverwrite),
+  )
   const cleaned = cleanMultiline(message, 3500)
   await updateInquiryWhatsappMessageRow(cleaned || '')
   const next = await getCitizenAttentionContentRow()
@@ -227,14 +241,24 @@ export async function getCitizenInquiryAdmin(id) {
   return item
 }
 
-export async function setCitizenInquiryStatus(id, nextStatus, expectedUpdatedAt = null) {
+export async function setCitizenInquiryStatus(
+  id,
+  nextStatus,
+  expectedUpdatedAt = null,
+  forceOverwrite = false,
+) {
   const status = cleanString(nextStatus, 24).toLowerCase()
   if (!ALLOWED_STATUSES.has(status)) {
     throw new AppError('Estado inválido.', 400)
   }
   const existing = await findCitizenInquiryByIdRow(Number(id))
   if (!existing) throw new AppError('Consulta no encontrada.', 404)
-  assertOptimisticLock(expectedUpdatedAt, existing.updatedAt, 'consulta ciudadana')
+  assertOptimisticLock(
+    expectedUpdatedAt,
+    existing.updatedAt,
+    'consulta ciudadana',
+    Boolean(forceOverwrite),
+  )
   return updateCitizenInquiryStatusRow(existing.id, status)
 }
 

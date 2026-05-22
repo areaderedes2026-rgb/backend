@@ -174,6 +174,30 @@ function sanitizeRoleHolder(item) {
   }
 }
 
+function pickRoleHolder(modern, legacy) {
+  const primary = sanitizeRoleHolder(modern)
+  if (primary.name || primary.role) return primary
+  return sanitizeRoleHolder(legacy)
+}
+
+function pickViceHolder(item, slot) {
+  if (!item || typeof item !== 'object') return { name: '', role: '' }
+  const nestedModern = slot === 1 ? item.vicepresidente1 : item.vicepresidente2
+  const nestedLegacy = slot === 1 ? item.vocal1 : item.vocal2
+  const fromNested = pickRoleHolder(nestedModern, nestedLegacy)
+  if (fromNested.name || fromNested.role) return fromNested
+
+  const flatName =
+    slot === 1
+      ? item.vicepresidente1Name ?? item.vocal1Name
+      : item.vicepresidente2Name ?? item.vocal2Name
+  const flatRole =
+    slot === 1
+      ? item.vicepresidente1Role ?? item.vocal1Role
+      : item.vicepresidente2Role ?? item.vocal2Role
+  return sanitizeRoleHolder({ name: flatName, role: flatRole })
+}
+
 function sanitizeCommission(item, index = 0) {
   if (!item || typeof item !== 'object') return null
   const name = cleanString(item.name, 220)
@@ -189,8 +213,8 @@ function sanitizeCommission(item, index = 0) {
     name,
     kind,
     presidente: sanitizeRoleHolder(item.presidente),
-    vocal1: kind === 'standard' ? sanitizeRoleHolder(item.vocal1) : { name: '', role: '' },
-    vocal2: kind === 'standard' ? sanitizeRoleHolder(item.vocal2) : { name: '', role: '' },
+    vicepresidente1: kind === 'standard' ? pickViceHolder(item, 1) : { name: '', role: '' },
+    vicepresidente2: kind === 'standard' ? pickViceHolder(item, 2) : { name: '', role: '' },
   }
 }
 
@@ -272,6 +296,7 @@ export async function saveConcejoDeliberanteContent(payload) {
     payload?.expectedUpdatedAt,
     current?.updatedAt,
     'contenido de concejo deliberante',
+    Boolean(payload?.forceOverwrite),
   )
   const data = sanitizePayload(payload)
   return upsertConcejoDeliberanteContentRow(data)

@@ -93,7 +93,12 @@ export async function createAreaRecord(payload) {
 export async function updateAreaRecord(id, payload) {
   const existing = await findAreaById(Number(id))
   if (!existing) throw new AppError('Área no encontrada.', 404)
-  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'área')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    existing.updated_at,
+    'área',
+    Boolean(payload?.forceOverwrite),
+  )
 
   const data = {}
 

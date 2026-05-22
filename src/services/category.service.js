@@ -70,7 +70,12 @@ export async function createCategoryRecord(payload) {
 export async function updateCategoryRecord(id, payload) {
   const existing = await findCategoryById(Number(id))
   if (!existing) throw new AppError('Categoría no encontrada.', 404)
-  assertOptimisticLock(payload?.expectedUpdatedAt, existing.updated_at, 'categoría')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    existing.updated_at,
+    'categoría',
+    Boolean(payload?.forceOverwrite),
+  )
 
   const data = {}
   if (payload.name !== undefined) {

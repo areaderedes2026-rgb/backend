@@ -72,6 +72,7 @@ export async function saveLegisladorEsteContent(payload) {
     payload?.expectedUpdatedAt,
     current?.updatedAt,
     'contenido de legislador por el este',
+    Boolean(payload?.forceOverwrite),
   )
   const data = sanitizePayload(payload)
   return upsertLegisladorEsteContentRow(data)

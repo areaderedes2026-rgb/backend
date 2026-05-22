@@ -36,7 +36,12 @@ export async function saveSitePageBanner(pageKeyRaw, payload) {
   const pageKey = cleanPageKey(pageKeyRaw)
   assertAllowedPageKey(pageKey)
   const current = await getSitePageBannerRow(pageKey)
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, `banner ${pageKey}`)
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    `banner ${pageKey}`,
+    Boolean(payload?.forceOverwrite),
+  )
   return upsertSitePageBannerRow(pageKey, {
     heroImageUrl: cleanUrl(payload?.heroImageUrl),
   })

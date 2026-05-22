@@ -25,7 +25,12 @@ export async function getAreasPageContent() {
 
 export async function saveAreasPageContent(payload) {
   const current = await getAreasPageContentRow()
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de áreas')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'contenido de áreas',
+    Boolean(payload?.forceOverwrite),
+  )
   return upsertAreasPageContentRow({
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
   })

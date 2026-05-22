@@ -100,7 +100,12 @@ export async function getHistoryContent() {
 
 export async function saveHistoryContent(payload) {
   const current = await getHistoryContentRow()
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'contenido de historia')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'contenido de historia',
+    Boolean(payload?.forceOverwrite),
+  )
   const data = sanitizePayload(payload)
   return upsertHistoryContentRow(data)
 }

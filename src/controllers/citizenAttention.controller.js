@@ -37,6 +37,7 @@ export const putInquiryWhatsappTemplateCtrl = asyncHandler(async (req, res) => {
   const data = await saveInquiryWhatsappTemplate({
     message: body.message,
     expectedUpdatedAt: body.expectedUpdatedAt,
+    forceOverwrite: Boolean(body.forceOverwrite),
   })
   res.status(200).json({ ok: true, message: data.message, updatedAt: data.updatedAt })
 })
@@ -61,6 +62,7 @@ export const patchCitizenInquiryStatusCtrl = asyncHandler(async (req, res) => {
     req.params.id,
     req.body?.status,
     req.body?.expectedUpdatedAt,
+    Boolean(req.body?.forceOverwrite),
   )
   res.status(200).json({ ok: true, inquiry })
 })

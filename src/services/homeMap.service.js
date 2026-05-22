@@ -58,7 +58,12 @@ export async function getHomeMapContent() {
 
 export async function saveHomeMapContent(payload) {
   const current = await getHomeMapContentRow()
-  assertOptimisticLock(payload?.expectedUpdatedAt, current?.updatedAt, 'mapa de inicio')
+  assertOptimisticLock(
+    payload?.expectedUpdatedAt,
+    current?.updatedAt,
+    'mapa de inicio',
+    Boolean(payload?.forceOverwrite),
+  )
   const data = sanitizePayload(payload)
   return upsertHomeMapContentRow(data)
 }
