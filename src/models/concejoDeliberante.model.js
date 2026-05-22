@@ -11,6 +11,14 @@ function parseJsonSafe(value, fallback) {
   }
 }
 
+function parseMainFunctionsJson(value) {
+  const parsed = parseJsonSafe(value, null)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { enabled: true, title: '', sections: [] }
+  }
+  return parsed
+}
+
 /** Quita campos heredados (p. ej. bloque político) que ya no se usan en el portal. */
 function sanitizeMembersJson(list) {
   if (!Array.isArray(list)) return []
@@ -44,7 +52,7 @@ function mapConcejoDeliberanteRow(row) {
     contactPhone: row.contact_phone || '',
     contactAddress: row.contact_address || '',
     contactHours: row.contact_hours || '',
-    blocks: [],
+    mainFunctions: parseMainFunctionsJson(row.blocks_json),
     members: sanitizeMembersJson(parseJsonSafe(row.members_json, [])),
     commissions: [],
     updatedAt: row.updated_at || null,
@@ -126,7 +134,7 @@ export async function upsertConcejoDeliberanteContentRow(payload) {
       payload.contactPhone,
       payload.contactAddress,
       payload.contactHours,
-      JSON.stringify(payload.blocks),
+      JSON.stringify(payload.mainFunctions ?? {}),
       JSON.stringify(payload.members),
       JSON.stringify(payload.commissions),
     ],

@@ -66,6 +66,106 @@ function sanitizeMember(item, index = 0) {
   }
 }
 
+function cleanSortOrderMain(value, fallback = 0) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return Math.max(0, Math.round(fallback))
+  return Math.max(0, Math.round(n))
+}
+
+function sanitizeLines(input, maxItems = 24, maxLen = 2000) {
+  const raw = Array.isArray(input) ? input : []
+  const out = []
+  for (const line of raw.slice(0, maxItems)) {
+    const s = cleanMultiline(line, maxLen)
+    if (s) out.push(s)
+  }
+  return out
+}
+
+function sanitizeListGroup(item, index = 0) {
+  if (!item || typeof item !== 'object') return null
+  const title = cleanString(item.title, 220)
+  const items = sanitizeLines(item.items, 20, 1200)
+  if (!title && !items.length) return null
+  return {
+    id: cleanString(item.id, 90) || uniqueId('list'),
+    sortOrder:
+      item?.sortOrder == null || item?.sortOrder === ''
+        ? (index + 1) * 10
+        : cleanSortOrderMain(item.sortOrder, (index + 1) * 10),
+    title,
+    items,
+  }
+}
+
+function sanitizeExamples(item) {
+  if (!item || typeof item !== 'object') return null
+  const title = cleanString(item.title, 120) || 'Ejemplos'
+  const items = sanitizeLines(item.items, 16, 1200)
+  if (!items.length) return null
+  return { title, items }
+}
+
+function sanitizeSubsection(item, index = 0) {
+  if (!item || typeof item !== 'object') return null
+  const title = cleanString(item.title, 220)
+  const paragraphs = sanitizeLines(item.paragraphs, 12, 2500)
+  const listGroups = (Array.isArray(item.listGroups) ? item.listGroups : [])
+    .map((g, idx) => sanitizeListGroup(g, idx))
+    .filter(Boolean)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  const examples = sanitizeExamples(item.examples)
+  if (!title && !paragraphs.length && !listGroups.length && !examples) return null
+  return {
+    id: cleanString(item.id, 90) || uniqueId('sub'),
+    sortOrder:
+      item?.sortOrder == null || item?.sortOrder === ''
+        ? (index + 1) * 10
+        : cleanSortOrderMain(item.sortOrder, (index + 1) * 10),
+    title,
+    paragraphs,
+    listGroups,
+    examples,
+  }
+}
+
+function sanitizeFunctionSection(item, index = 0) {
+  if (!item || typeof item !== 'object') return null
+  const title = cleanString(item.title, 220)
+  const number = cleanString(item.number, 12)
+  const paragraphs = sanitizeLines(item.paragraphs, 16, 2500)
+  const subsections = (Array.isArray(item.subsections) ? item.subsections : [])
+    .map((s, idx) => sanitizeSubsection(s, idx))
+    .filter(Boolean)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  if (!title && !paragraphs.length && !subsections.length) return null
+  return {
+    id: cleanString(item.id, 90) || uniqueId('func'),
+    sortOrder:
+      item?.sortOrder == null || item?.sortOrder === ''
+        ? (index + 1) * 10
+        : cleanSortOrderMain(item.sortOrder, (index + 1) * 10),
+    number,
+    title,
+    paragraphs,
+    subsections,
+  }
+}
+
+function sanitizeMainFunctions(input) {
+  const raw = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const sections = (Array.isArray(raw.sections) ? raw.sections : [])
+    .slice(0, 12)
+    .map((s, idx) => sanitizeFunctionSection(s, idx))
+    .filter(Boolean)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  return {
+    enabled: raw.enabled !== false,
+    title: cleanString(raw.title, 220) || 'Funciones principales del HCD',
+    sections,
+  }
+}
+
 function sanitizeMembers(input) {
   const raw = Array.isArray(input) ? input : []
   const seen = new Set()
@@ -103,7 +203,7 @@ function sanitizePayload(payload) {
     contactPhone: cleanString(payload?.contactPhone, 80),
     contactAddress: cleanString(payload?.contactAddress, 280),
     contactHours: cleanString(payload?.contactHours, 180),
-    blocks: [],
+    mainFunctions: sanitizeMainFunctions(payload?.mainFunctions ?? payload?.blocks),
     members: sanitizeMembers(payload?.members),
     commissions: [],
   }
