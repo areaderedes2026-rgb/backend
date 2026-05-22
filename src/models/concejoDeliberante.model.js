@@ -47,6 +47,7 @@ function mapConcejoDeliberanteRow(row) {
     heroSubtitle: row.hero_subtitle || '',
     heroImageUrl: row.hero_image_url || '',
     introTitle: row.intro_title || '',
+    introLogoUrl: row.intro_logo_url || '',
     introParagraphs: parseJsonSafe(row.intro_paragraphs_json, []),
     presidentName: row.president_name || '',
     presidentRole: row.president_role || '',
@@ -86,6 +87,7 @@ export async function upsertConcejoDeliberanteContentRow(payload) {
       hero_subtitle,
       hero_image_url,
       intro_title,
+      intro_logo_url,
       intro_paragraphs_json,
       president_name,
       president_role,
@@ -105,13 +107,14 @@ export async function upsertConcejoDeliberanteContentRow(payload) {
       blocks_json,
       members_json,
       commissions_json
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
       hero_subtitle = VALUES(hero_subtitle),
       hero_image_url = VALUES(hero_image_url),
       intro_title = VALUES(intro_title),
+      intro_logo_url = VALUES(intro_logo_url),
       intro_paragraphs_json = VALUES(intro_paragraphs_json),
       president_name = VALUES(president_name),
       president_role = VALUES(president_role),
@@ -138,6 +141,7 @@ export async function upsertConcejoDeliberanteContentRow(payload) {
       payload.heroSubtitle,
       payload.heroImageUrl,
       payload.introTitle,
+      payload.introLogoUrl,
       JSON.stringify(payload.introParagraphs),
       payload.presidentName,
       payload.presidentRole,

@@ -239,6 +239,7 @@ function sanitizePayload(payload) {
     heroSubtitle: cleanMultiline(payload?.heroSubtitle, 2000),
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
     introTitle: cleanString(payload?.introTitle, 220),
+    introLogoUrl: cleanUrl(payload?.introLogoUrl, 2048),
     introParagraphs: sanitizeParagraphs(payload?.introParagraphs),
     presidentName: cleanString(payload?.presidentName, 160),
     presidentRole: cleanString(payload?.presidentRole, 180),
