@@ -166,6 +166,55 @@ function sanitizeMainFunctions(input) {
   }
 }
 
+function sanitizeRoleHolder(item) {
+  if (!item || typeof item !== 'object') return { name: '', role: '' }
+  return {
+    name: cleanString(item.name, 160),
+    role: cleanString(item.role, 180),
+  }
+}
+
+function sanitizeCommission(item, index = 0) {
+  if (!item || typeof item !== 'object') return null
+  const name = cleanString(item.name, 220)
+  if (!name) return null
+  const kind = item.kind === 'coordinating' ? 'coordinating' : 'standard'
+  return {
+    id: cleanString(item.id, 90) || uniqueId('com'),
+    sortOrder:
+      item?.sortOrder == null || item?.sortOrder === ''
+        ? (index + 1) * 10
+        : cleanSortOrderMain(item.sortOrder, (index + 1) * 10),
+    number: cleanString(item.number, 12) || String(index + 1),
+    name,
+    kind,
+    presidente: sanitizeRoleHolder(item.presidente),
+    vocal1: kind === 'standard' ? sanitizeRoleHolder(item.vocal1) : { name: '', role: '' },
+    vocal2: kind === 'standard' ? sanitizeRoleHolder(item.vocal2) : { name: '', role: '' },
+  }
+}
+
+function sanitizeCommissions(input) {
+  const raw = input && typeof input === 'object' && !Array.isArray(input) ? input : {}
+  const items = (Array.isArray(raw.items) ? raw.items : [])
+    .slice(0, 20)
+    .map((c, idx) => sanitizeCommission(c, idx))
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
+      const na = Number(a.number)
+      const nb = Number(b.number)
+      if (Number.isFinite(na) && Number.isFinite(nb) && na !== nb) return na - nb
+      return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+    })
+  return {
+    enabled: raw.enabled !== false,
+    title: cleanString(raw.title, 220) || 'Comisiones de Trabajo',
+    subtitle: cleanMultiline(raw.subtitle, 800),
+    items,
+  }
+}
+
 function sanitizeMembers(input) {
   const raw = Array.isArray(input) ? input : []
   const seen = new Set()
@@ -205,7 +254,7 @@ function sanitizePayload(payload) {
     contactHours: cleanString(payload?.contactHours, 180),
     mainFunctions: sanitizeMainFunctions(payload?.mainFunctions ?? payload?.blocks),
     members: sanitizeMembers(payload?.members),
-    commissions: [],
+    commissions: sanitizeCommissions(payload?.commissions),
   }
 }
 

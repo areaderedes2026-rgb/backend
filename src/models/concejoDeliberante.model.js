@@ -19,6 +19,14 @@ function parseMainFunctionsJson(value) {
   return parsed
 }
 
+function parseCommissionsJson(value) {
+  const parsed = parseJsonSafe(value, null)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { enabled: true, title: '', subtitle: '', items: [] }
+  }
+  return parsed
+}
+
 /** Quita campos heredados (p. ej. bloque político) que ya no se usan en el portal. */
 function sanitizeMembersJson(list) {
   if (!Array.isArray(list)) return []
@@ -54,7 +62,7 @@ function mapConcejoDeliberanteRow(row) {
     contactHours: row.contact_hours || '',
     mainFunctions: parseMainFunctionsJson(row.blocks_json),
     members: sanitizeMembersJson(parseJsonSafe(row.members_json, [])),
-    commissions: [],
+    commissions: parseCommissionsJson(row.commissions_json),
     updatedAt: row.updated_at || null,
   }
 }
