@@ -39,10 +39,20 @@ function sanitizeParagraphs(input) {
   return out
 }
 
-function sanitizeMember(item) {
+function cleanSortOrder(value, fallback = 0) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return Math.max(0, Math.round(fallback))
+  return Math.max(0, Math.round(n))
+}
+
+function sanitizeMember(item, index = 0) {
   const id = cleanString(item?.id, 90) || uniqueId('concejal')
   const name = cleanString(item?.name, 180)
   if (!name) return null
+  const sortOrder =
+    item?.sortOrder == null || item?.sortOrder === ''
+      ? (index + 1) * 10
+      : cleanSortOrder(item.sortOrder, (index + 1) * 10)
   return {
     id,
     name,
@@ -52,6 +62,7 @@ function sanitizeMember(item) {
     email: cleanString(item?.email, 180).toLowerCase(),
     phone: cleanString(item?.phone, 80),
     period: cleanString(item?.period, 80),
+    sortOrder,
   }
 }
 
@@ -59,14 +70,17 @@ function sanitizeMembers(input) {
   const raw = Array.isArray(input) ? input : []
   const seen = new Set()
   const out = []
-  for (const it of raw.slice(0, 50)) {
-    const m = sanitizeMember(it)
+  for (const [idx, it] of raw.slice(0, 50).entries()) {
+    const m = sanitizeMember(it, idx)
     if (!m) continue
     if (seen.has(m.id)) m.id = uniqueId('concejal')
     seen.add(m.id)
     out.push(m)
   }
-  return out
+  return out.sort((a, b) => {
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder
+    return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+  })
 }
 
 function sanitizePayload(payload) {
