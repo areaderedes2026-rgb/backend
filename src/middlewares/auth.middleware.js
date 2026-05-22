@@ -50,5 +50,8 @@ export function requireRole(...roles) {
 /** Solo administradores (gestión de usuarios). */
 export const requireAdmin = requireRole('admin')
 
-/** Administrador o editor (noticias). */
+/** Administrador o editor (noticias y contenido general). */
 export const requireStaff = requireRole('admin', 'editor')
+
+/** Subida de imágenes: staff + editores de servicio de área (portada y proyectos). */
+export const requireImageUpload = requireRole('admin', 'editor', 'area_service_editor')

@@ -5,7 +5,7 @@ import {
   postImportNewsImageFromUrl,
   postUploadNewsImage,
 } from '../controllers/upload.controller.js'
-import { authenticate, requireStaff } from '../middlewares/auth.middleware.js'
+import { authenticate, requireImageUpload } from '../middlewares/auth.middleware.js'
 import { uploadNewsImage } from '../middlewares/upload.middleware.js'
 import { validate } from '../middlewares/validate.middleware.js'
 import { CLOUDINARY_IMPORT_MAX_BYTES } from '../config/cloudinary.js'
@@ -42,7 +42,7 @@ router.post(
 router.post(
   '/from-url',
   authenticate,
-  requireStaff,
+  requireImageUpload,
   [
     body('url').trim().isURL({ protocols: ['http', 'https'], require_protocol: true }),
     body('kind').optional().isIn(['cover', 'gallery']),
