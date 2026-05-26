@@ -118,6 +118,59 @@ function sanitizeServiceContactSection(input) {
   }
 }
 
+function sanitizeServiceGalleryImage(item, idx = 0) {
+  const imageUrl = cleanUrl(item?.imageUrl, 2048)
+  const caption = cleanString(item?.caption, 160)
+  let id = cleanString(item?.id, 120)
+  if (!id) id = `gal-${idx + 1}`
+  if (!imageUrl && !caption) return null
+  return { id, imageUrl, caption }
+}
+
+function sanitizeServiceGallerySection(input) {
+  if (!input || typeof input !== 'object') {
+    return { enabled: false, title: 'Galería de fotos', images: [] }
+  }
+  const images = sanitizeItems(
+    input.images,
+    (item, idx) => sanitizeServiceGalleryImage(item, idx),
+    24,
+  )
+  return {
+    enabled: Boolean(input.enabled),
+    title: cleanString(input.title, 80) || 'Galería de fotos',
+    images,
+  }
+}
+
+function sanitizeServiceAuthorityPerson(item, idx = 0) {
+  const name = cleanString(item?.name, 160)
+  const role = cleanString(item?.role, 180)
+  const bio = cleanString(item?.bio, 1200)
+  const photoUrl = cleanUrl(item?.photoUrl, 2048)
+  let id = cleanString(item?.id, 120)
+  if (!id) id = `auth-${idx + 1}`
+  if (!name && !role && !bio && !photoUrl) return null
+  return { id, name, role, bio, photoUrl }
+}
+
+function sanitizeServiceAuthoritySection(input) {
+  if (!input || typeof input !== 'object') {
+    return { enabled: false, title: 'Autoridades a cargo', intro: '', people: [] }
+  }
+  const people = sanitizeItems(
+    input.people,
+    (item, idx) => sanitizeServiceAuthorityPerson(item, idx),
+    12,
+  )
+  return {
+    enabled: Boolean(input.enabled),
+    title: cleanString(input.title, 80) || 'Autoridades a cargo',
+    intro: cleanString(input.intro, 600),
+    people,
+  }
+}
+
 function sanitizeServiceItem(item, idx = 0) {
   const title = cleanString(item?.title, 180)
   const description = cleanString(item?.description, 2200)
@@ -135,6 +188,13 @@ function sanitizeServiceItem(item, idx = 0) {
     40,
   )
   const contactSection = sanitizeServiceContactSection(item?.contactSection)
+  const gallerySection = sanitizeServiceGallerySection(item?.gallerySection)
+  const authoritySection = sanitizeServiceAuthoritySection(item?.authoritySection)
+  const hasGallery =
+    gallerySection.enabled && gallerySection.images.some((img) => img.imageUrl)
+  const hasAuthority = authoritySection.enabled && authoritySection.people.length > 0
+  const hasContacts =
+    contactSection.enabled && contactSection.items.some((c) => c.value || c.url || c.note)
   let id = cleanServiceId(item?.id)
   if (!id) id = randomUUID()
   if (
@@ -144,7 +204,10 @@ function sanitizeServiceItem(item, idx = 0) {
     !imageUrl &&
     !personInCharge &&
     !generalObjective &&
-    projects.length === 0
+    projects.length === 0 &&
+    !hasGallery &&
+    !hasAuthority &&
+    !hasContacts
   ) {
     return null
   }
@@ -159,6 +222,8 @@ function sanitizeServiceItem(item, idx = 0) {
     sortOrder,
     projects,
     contactSection,
+    gallerySection,
+    authoritySection,
   }
 }
 
