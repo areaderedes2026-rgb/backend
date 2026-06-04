@@ -39,6 +39,16 @@ function sanitizeItems(list, mapper, maxItems = 20) {
   return out
 }
 
+function slugFromProcedureName(name, idx) {
+  const base = cleanString(name, 80)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return base || `tramite-${idx + 1}`
+}
+
 function slugFromSchoolName(name, idx) {
   const s = cleanString(name, 120)
     .toLowerCase()
@@ -270,6 +280,59 @@ function preserveServicePriorityForNonAdmin(nextData, current, user) {
   }
 }
 
+function sanitizeProcedureItem(item, idx = 0) {
+  const name = cleanString(item?.name, 200)
+  const description = cleanString(item?.description, 2400)
+  const rawSteps = Array.isArray(item?.steps) ? item.steps : []
+  const steps = []
+  for (let i = 0; i < rawSteps.length && steps.length < 24; i++) {
+    const step = cleanString(rawSteps[i], 600)
+    if (step) steps.push(step)
+  }
+  const linkUrl = cleanUrl(item?.linkUrl, 2048)
+  const linkLabel = cleanString(item?.linkLabel, 80)
+  const contactPhone = cleanString(item?.contactPhone, 80)
+  const contactEmail = cleanString(item?.contactEmail, 180)
+  const contactNote = cleanString(item?.contactNote, 240)
+  let id = cleanString(item?.id, 120)
+  if (!id) id = slugFromProcedureName(name, idx)
+  if (!name && !description && !steps.length && !linkUrl && !contactPhone && !contactEmail) {
+    return null
+  }
+  return {
+    id,
+    name,
+    description,
+    steps,
+    linkUrl,
+    linkLabel: linkLabel || 'Ver trámite en línea',
+    contactPhone,
+    contactEmail,
+    contactNote,
+  }
+}
+
+function sanitizeProceduresSection(input) {
+  if (input === null || input === undefined) return null
+  if (!input || typeof input !== 'object') return null
+  if (!Boolean(input.enabled)) return null
+  const rawItems = Array.isArray(input.items) ? input.items : []
+  const items = []
+  for (let idx = 0; idx < rawItems.length && items.length < 40; idx++) {
+    const item = sanitizeProcedureItem(rawItems[idx], idx)
+    if (item) items.push(item)
+  }
+  if (!items.length) return null
+  return {
+    enabled: true,
+    navLabel: cleanString(input.navLabel, 80) || 'Trámites',
+    eyebrow: cleanString(input.eyebrow, 120),
+    title: cleanString(input.title, 200),
+    intro: cleanString(input.intro, 3200),
+    items,
+  }
+}
+
 function sanitizeSchoolsSection(input) {
   if (input === null) return null
   if (!input || typeof input !== 'object') return null
@@ -350,6 +413,7 @@ function sanitizePayload(payload) {
       mapExternalUrl: cleanUrl(locationIn.mapExternalUrl, 2048),
     },
     schoolsSection: sanitizeSchoolsSection(payload?.schoolsSection),
+    proceduresSection: sanitizeProceduresSection(payload?.proceduresSection),
   }
 }
 

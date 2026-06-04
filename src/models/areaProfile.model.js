@@ -29,6 +29,25 @@ function mapSchoolsSectionFromRow(row) {
   }
 }
 
+function mapProceduresSectionFromRow(row) {
+  if (row == null || row.tramites_json == null) return null
+  const raw = row.tramites_json
+  const parsed =
+    typeof raw === 'string' ? parseJsonSafe(raw, null) : typeof raw === 'object' ? raw : null
+  if (!parsed || typeof parsed !== 'object') return null
+  if (!parsed.enabled) return null
+  const items = Array.isArray(parsed.items) ? parsed.items : []
+  if (!items.length) return null
+  return {
+    enabled: true,
+    navLabel: typeof parsed.navLabel === 'string' ? parsed.navLabel : 'Trámites',
+    eyebrow: typeof parsed.eyebrow === 'string' ? parsed.eyebrow : '',
+    title: typeof parsed.title === 'string' ? parsed.title : '',
+    intro: typeof parsed.intro === 'string' ? parsed.intro : '',
+    items,
+  }
+}
+
 function mapAreaProfileRow(row) {
   if (!row) return null
   return {
@@ -50,6 +69,7 @@ function mapAreaProfileRow(row) {
     notices: parseJsonSafe(row.notices_json, []),
     /** Siempre presente cuando existe fila en BD: `null` = vacío guardado (el cliente no debe asumir fallback estático). */
     schoolsSection: mapSchoolsSectionFromRow(row),
+    proceduresSection: mapProceduresSectionFromRow(row),
     location: {
       address: row.location_address || '',
       references: row.location_references || '',
@@ -86,11 +106,12 @@ export async function upsertAreaProfileBySlug(slug, payload) {
       contacts_json,
       notices_json,
       schools_json,
+      tramites_json,
       location_address,
       location_references,
       location_map_embed_url,
       location_map_external_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_tag = VALUES(hero_tag),
       mission = VALUES(mission),
@@ -106,6 +127,7 @@ export async function upsertAreaProfileBySlug(slug, payload) {
       contacts_json = VALUES(contacts_json),
       notices_json = VALUES(notices_json),
       schools_json = VALUES(schools_json),
+      tramites_json = VALUES(tramites_json),
       location_address = VALUES(location_address),
       location_references = VALUES(location_references),
       location_map_embed_url = VALUES(location_map_embed_url),
@@ -127,6 +149,7 @@ export async function upsertAreaProfileBySlug(slug, payload) {
       JSON.stringify(payload.contactCards),
       JSON.stringify(payload.notices),
       payload.schoolsSection ? JSON.stringify(payload.schoolsSection) : null,
+      payload.proceduresSection ? JSON.stringify(payload.proceduresSection) : null,
       payload.location.address,
       payload.location.references,
       payload.location.mapEmbedUrl,
