@@ -333,6 +333,59 @@ function sanitizeProceduresSection(input) {
   }
 }
 
+const ANNOUNCEMENT_VARIANTS = new Set(['info', 'warning', 'success', 'urgent'])
+
+function slugFromAnnouncementTitle(title, idx) {
+  const base = cleanString(title, 80)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return base || `anuncio-${idx + 1}`
+}
+
+function sanitizeAnnouncementItem(item, idx = 0) {
+  const title = cleanString(item?.title, 200)
+  const message = cleanString(item?.message, 1200)
+  const linkUrl = cleanUrl(item?.linkUrl, 2048)
+  const linkLabel = cleanString(item?.linkLabel, 80)
+  let variant = cleanString(item?.variant, 20).toLowerCase()
+  if (!ANNOUNCEMENT_VARIANTS.has(variant)) variant = 'info'
+  let id = cleanString(item?.id, 120)
+  if (!id) id = slugFromAnnouncementTitle(title, idx)
+  if (!title && !message) return null
+  return {
+    id,
+    title,
+    message,
+    linkUrl,
+    linkLabel: linkLabel || 'Más información',
+    variant,
+    dismissible: item?.dismissible !== false,
+  }
+}
+
+function sanitizeAnnouncementsSection(input) {
+  if (input === null || input === undefined) return null
+  if (!input || typeof input !== 'object') return null
+  if (!Boolean(input.enabled)) return null
+  const rawItems = Array.isArray(input.items) ? input.items : []
+  const items = []
+  for (let idx = 0; idx < rawItems.length && items.length < 12; idx++) {
+    const item = sanitizeAnnouncementItem(rawItems[idx], idx)
+    if (item) items.push(item)
+  }
+  if (!items.length) return null
+  const modeRaw = cleanString(input.displayMode, 20).toLowerCase()
+  const displayMode = modeRaw === 'floating' ? 'floating' : 'inline'
+  return {
+    enabled: true,
+    displayMode,
+    items,
+  }
+}
+
 function sanitizeSchoolsSection(input) {
   if (input === null) return null
   if (!input || typeof input !== 'object') return null
@@ -414,6 +467,7 @@ function sanitizePayload(payload) {
     },
     schoolsSection: sanitizeSchoolsSection(payload?.schoolsSection),
     proceduresSection: sanitizeProceduresSection(payload?.proceduresSection),
+    announcementsSection: sanitizeAnnouncementsSection(payload?.announcementsSection),
   }
 }
 
