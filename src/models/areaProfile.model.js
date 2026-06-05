@@ -133,7 +133,7 @@ export async function upsertAreaProfileBySlug(slug, payload) {
       location_references,
       location_map_embed_url,
       location_map_external_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_tag = VALUES(hero_tag),
       mission = VALUES(mission),
