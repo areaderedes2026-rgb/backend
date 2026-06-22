@@ -4,6 +4,10 @@ import {
 } from '../models/ofertaAcademica.model.js'
 import { assertOptimisticLock } from '../utils/concurrency.js'
 
+const OFFER_SUMMARY_MAX = 3000
+const OFFER_DETAIL_MAX = 2500
+const OFFER_INSCRIPTION_MAX = 2500
+
 function cleanString(value, maxLen = 0) {
   const v = String(value || '').trim()
   if (!maxLen) return v
@@ -87,16 +91,16 @@ function sanitizeOffer(item, categorySet) {
   const modality = cleanString(item?.modality, 120)
   const duration = cleanString(item?.duration, 160)
   const location = cleanString(item?.location, 320)
-  const summary = cleanString(item?.summary, 600)
+  const summary = cleanMultiline(item?.summary, OFFER_SUMMARY_MAX)
   const details = (Array.isArray(item?.details) ? item.details : [])
     .slice(0, 14)
-    .map((d) => cleanMultiline(d, 1600))
+    .map((d) => cleanMultiline(d, OFFER_DETAIL_MAX))
     .filter(Boolean)
   const requirements = (Array.isArray(item?.requirements) ? item.requirements : [])
     .slice(0, 18)
     .map((r) => cleanString(r, 320))
     .filter(Boolean)
-  const inscription = cleanMultiline(item?.inscription, 1400)
+  const inscription = cleanMultiline(item?.inscription, OFFER_INSCRIPTION_MAX)
   const tags = (Array.isArray(item?.tags) ? item.tags : [])
     .slice(0, 10)
     .map((t) => cleanString(t, 64))
