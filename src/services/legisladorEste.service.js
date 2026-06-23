@@ -37,6 +37,113 @@ function cleanBool(value, fallback = true) {
   return Boolean(value)
 }
 
+function cleanYear(value) {
+  const y = Math.round(Number(value))
+  if (!Number.isFinite(y) || y < 1900 || y > 2100) return null
+  return y
+}
+
+function cleanCount(value) {
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return 0
+  return Math.max(0, Math.min(99999, n))
+}
+
+function cleanSortOrder(value, fallback) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function sanitizeProjectStat(item, index) {
+  const year = cleanYear(item?.year)
+  if (!year) return null
+  const id = cleanString(item?.id, 90) || `proj-${Math.random().toString(36).slice(2, 9)}`
+  return {
+    id,
+    sortOrder: cleanSortOrder(item?.sortOrder, (index + 1) * 10),
+    year,
+    count: cleanCount(item?.count),
+  }
+}
+
+function sanitizePresentedProjects(input) {
+  const raw = input && typeof input === 'object' ? input : {}
+  const items = []
+  for (const [index, item] of (Array.isArray(raw.items) ? raw.items : []).slice(0, 12).entries()) {
+    const row = sanitizeProjectStat(item, index)
+    if (row) items.push(row)
+  }
+  items.sort((a, b) => a.sortOrder - b.sortOrder || a.year - b.year)
+  return {
+    enabled: cleanBool(raw.enabled, true),
+    title: cleanString(raw.title, 220) || 'Proyectos presentados',
+    subtitle: cleanMultiline(raw.subtitle, 600),
+    items,
+  }
+}
+
+function sanitizeCommission(item, index) {
+  const name = cleanString(item?.name, 240)
+  if (!name) return null
+  const id = cleanString(item?.id, 90) || `com-${Math.random().toString(36).slice(2, 9)}`
+  return {
+    id,
+    sortOrder: cleanSortOrder(item?.sortOrder, (index + 1) * 10),
+    number: cleanString(item?.number, 12) || String(index + 1),
+    name,
+    roleLabel: cleanString(item?.roleLabel, 80) || 'Miembro',
+    roleHolder: cleanString(item?.roleHolder, 200),
+    competencies: cleanMultiline(item?.competencies, 2500),
+  }
+}
+
+function sanitizeCommissions(input) {
+  const raw = input && typeof input === 'object' ? input : {}
+  const items = []
+  for (const [index, item] of (Array.isArray(raw.items) ? raw.items : []).slice(0, 24).entries()) {
+    const row = sanitizeCommission(item, index)
+    if (row) items.push(row)
+  }
+  items.sort((a, b) => a.sortOrder - b.sortOrder)
+  return {
+    enabled: cleanBool(raw.enabled, true),
+    title: cleanString(raw.title, 240) || 'Comisiones que integra el legislador',
+    subtitle: cleanMultiline(raw.subtitle, 800),
+    items,
+  }
+}
+
+function sanitizeLaw(item, index) {
+  const number = cleanString(item?.number, 40)
+  const body = cleanMultiline(item?.body ?? item?.description, 4000)
+  if (!number && !body) return null
+  const lawNumber = number || String(index + 1)
+  const id = cleanString(item?.id, 90) || `law-${Math.random().toString(36).slice(2, 9)}`
+  return {
+    id,
+    sortOrder: cleanSortOrder(item?.sortOrder, (index + 1) * 10),
+    number: lawNumber,
+    label: cleanString(item?.label, 120) || `LEY ${lawNumber}`,
+    body,
+  }
+}
+
+function sanitizeLaws(input) {
+  const raw = input && typeof input === 'object' ? input : {}
+  const items = []
+  for (const [index, item] of (Array.isArray(raw.items) ? raw.items : []).slice(0, 80).entries()) {
+    const row = sanitizeLaw(item, index)
+    if (row) items.push(row)
+  }
+  items.sort((a, b) => a.sortOrder - b.sortOrder)
+  return {
+    enabled: cleanBool(raw.enabled, true),
+    title: cleanString(raw.title, 180) || 'Leyes',
+    subtitle: cleanMultiline(raw.subtitle, 800),
+    items,
+  }
+}
+
 function sanitizePayload(payload) {
   return {
     heroEyebrow: cleanString(payload?.heroEyebrow, 120),
@@ -58,7 +165,12 @@ function sanitizePayload(payload) {
     showContactPhone: cleanBool(payload?.showContactPhone, true),
     showOfficeHours: cleanBool(payload?.showOfficeHours, true),
     showContactNote: cleanBool(payload?.showContactNote, true),
-    showManagementAxes: cleanBool(payload?.showManagementAxes, true),
+    presentedProjects: sanitizePresentedProjects(payload?.presentedProjects),
+    commissions: sanitizeCommissions(payload?.commissions),
+    laws: sanitizeLaws(payload?.laws),
+    showPresentedProjects: cleanBool(payload?.showPresentedProjects, true),
+    showCommissions: cleanBool(payload?.showCommissions, true),
+    showLaws: cleanBool(payload?.showLaws, true),
   }
 }
 

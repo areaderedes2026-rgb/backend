@@ -1,5 +1,16 @@
 import { pool } from '../config/db.js'
 
+function parseJsonSafe(value, fallback) {
+  if (value == null) return fallback
+  if (typeof value === 'object') return value
+  if (typeof value !== 'string') return fallback
+  try {
+    return JSON.parse(value)
+  } catch {
+    return fallback
+  }
+}
+
 function toBoolFlag(value, fallback = true) {
   if (value === undefined || value === null) return fallback
   if (typeof value === 'boolean') return value
@@ -34,7 +45,12 @@ function mapLegisladorEsteRow(row) {
     showContactPhone: toBoolFlag(row.show_contact_phone),
     showOfficeHours: toBoolFlag(row.show_office_hours),
     showContactNote: toBoolFlag(row.show_contact_note),
-    showManagementAxes: toBoolFlag(row.show_management_axes),
+    presentedProjects: parseJsonSafe(row.projects_json, null),
+    commissions: parseJsonSafe(row.commissions_json, null),
+    laws: parseJsonSafe(row.laws_json, null),
+    showPresentedProjects: toBoolFlag(row.show_presented_projects, true),
+    showCommissions: toBoolFlag(row.show_commissions, true),
+    showLaws: toBoolFlag(row.show_laws, true),
     updatedAt: row.updated_at || null,
   }
 }
@@ -69,8 +85,14 @@ export async function upsertLegisladorEsteContentRow(payload) {
       show_contact_phone,
       show_office_hours,
       show_contact_note,
-      show_management_axes
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      show_management_axes,
+      projects_json,
+      commissions_json,
+      laws_json,
+      show_presented_projects,
+      show_commissions,
+      show_laws
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
@@ -91,7 +113,12 @@ export async function upsertLegisladorEsteContentRow(payload) {
       show_contact_phone = VALUES(show_contact_phone),
       show_office_hours = VALUES(show_office_hours),
       show_contact_note = VALUES(show_contact_note),
-      show_management_axes = VALUES(show_management_axes),
+      projects_json = VALUES(projects_json),
+      commissions_json = VALUES(commissions_json),
+      laws_json = VALUES(laws_json),
+      show_presented_projects = VALUES(show_presented_projects),
+      show_commissions = VALUES(show_commissions),
+      show_laws = VALUES(show_laws),
       updated_at = CURRENT_TIMESTAMP(3)`,
     [
       payload.heroEyebrow,
@@ -113,7 +140,12 @@ export async function upsertLegisladorEsteContentRow(payload) {
       payload.showContactPhone ? 1 : 0,
       payload.showOfficeHours ? 1 : 0,
       payload.showContactNote ? 1 : 0,
-      payload.showManagementAxes ? 1 : 0,
+      JSON.stringify(payload.presentedProjects || {}),
+      JSON.stringify(payload.commissions || {}),
+      JSON.stringify(payload.laws || {}),
+      payload.showPresentedProjects ? 1 : 0,
+      payload.showCommissions ? 1 : 0,
+      payload.showLaws ? 1 : 0,
     ],
   )
   return getLegisladorEsteContentRow()
