@@ -51,6 +51,8 @@ function mapLegisladorEsteRow(row) {
     showPresentedProjects: toBoolFlag(row.show_presented_projects, true),
     showCommissions: toBoolFlag(row.show_commissions, true),
     showLaws: toBoolFlag(row.show_laws, true),
+    projectsPdfUrl: row.projects_pdf_url || '',
+    showProjectsPdfButton: toBoolFlag(row.show_projects_pdf_button, true),
     updatedAt: row.updated_at || null,
   }
 }
@@ -91,8 +93,10 @@ export async function upsertLegisladorEsteContentRow(payload) {
       laws_json,
       show_presented_projects,
       show_commissions,
-      show_laws
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)
+      show_laws,
+      projects_pdf_url,
+      show_projects_pdf_button
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
@@ -119,6 +123,8 @@ export async function upsertLegisladorEsteContentRow(payload) {
       show_presented_projects = VALUES(show_presented_projects),
       show_commissions = VALUES(show_commissions),
       show_laws = VALUES(show_laws),
+      projects_pdf_url = VALUES(projects_pdf_url),
+      show_projects_pdf_button = VALUES(show_projects_pdf_button),
       updated_at = CURRENT_TIMESTAMP(3)`,
     [
       payload.heroEyebrow,
@@ -146,6 +152,8 @@ export async function upsertLegisladorEsteContentRow(payload) {
       payload.showPresentedProjects ? 1 : 0,
       payload.showCommissions ? 1 : 0,
       payload.showLaws ? 1 : 0,
+      payload.projectsPdfUrl,
+      payload.showProjectsPdfButton ? 1 : 0,
     ],
   )
   return getLegisladorEsteContentRow()

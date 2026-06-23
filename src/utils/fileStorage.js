@@ -17,6 +17,8 @@ const ALLOWED_IMAGE_MIME = new Set([
   'image/gif',
 ])
 
+const ALLOWED_PDF_MIME = new Set(['application/pdf'])
+
 function maxImageSizeLabel() {
   const mb = Math.round((CLOUDINARY_IMPORT_MAX_BYTES / (1024 * 1024)) * 10) / 10
   return `${mb} MB`
@@ -32,6 +34,29 @@ function uploadBufferToCloudinary(buffer, { kind = 'gallery' } = {}) {
       {
         folder: cloudinaryFolder(kind),
         resource_type: 'image',
+      },
+      (err, result) => {
+        if (err) {
+          reject(err)
+          return
+        }
+        resolve(result)
+      },
+    )
+    stream.end(buffer)
+  })
+}
+
+function cloudinaryDocumentsFolder(subfolder = 'legislador-projects') {
+  return `${CLOUDINARY_NEWS_FOLDER}/documents/${subfolder}`
+}
+
+function uploadBufferToCloudinaryRaw(buffer, { folder = 'legislador-projects' } = {}) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: cloudinaryDocumentsFolder(folder),
+        resource_type: 'raw',
       },
       (err, result) => {
         if (err) {
@@ -179,6 +204,30 @@ export async function importNewsImageFromUrl(remoteUrl, { kind = 'gallery' } = {
   }
   const buffer = await readResponseBufferWithLimit(response, CLOUDINARY_IMPORT_MAX_BYTES)
   return uploadNewsImageBuffer(buffer, { kind })
+}
+
+export async function uploadPdfBuffer(buffer, { folder = 'legislador-projects' } = {}) {
+  if (!ensureCloudinaryConfigured()) {
+    const missing = getMissingCloudinaryEnv().join(', ')
+    throw new AppError(
+      `Falta configurar Cloudinary en el backend (${missing || 'CLOUDINARY_*'}).`,
+      500,
+    )
+  }
+  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    throw new AppError('Archivo PDF inválido.', 400)
+  }
+  if (buffer.length > CLOUDINARY_IMPORT_MAX_BYTES) {
+    throw new AppError(
+      `El PDF excede el tamaño permitido (${maxImageSizeLabel()}).`,
+      400,
+    )
+  }
+  const result = await uploadBufferToCloudinaryRaw(buffer, { folder })
+  if (!result?.secure_url) {
+    throw new AppError('No se pudo obtener la URL del PDF.', 500)
+  }
+  return result.secure_url
 }
 
 function isCloudinaryManagedUrl(url) {

@@ -2,6 +2,7 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import {
   importNewsImageFromUrl,
   uploadNewsImageBuffer,
+  uploadPdfBuffer,
 } from '../utils/fileStorage.js'
 
 function parseKind(value) {
@@ -27,5 +28,15 @@ export const postImportNewsImageFromUrl = asyncHandler(async (req, res) => {
   }
   const kind = parseKind(req.body?.kind)
   const url = await importNewsImageFromUrl(remoteUrl, { kind })
+  res.status(201).json({ ok: true, url })
+})
+
+export const postUploadPdf = asyncHandler(async (req, res) => {
+  const file = req.file
+  if (!file?.buffer) {
+    res.status(400).json({ ok: false, error: 'No se recibió ningún archivo PDF.' })
+    return
+  }
+  const url = await uploadPdfBuffer(file.buffer)
   res.status(201).json({ ok: true, url })
 })

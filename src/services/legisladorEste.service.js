@@ -171,6 +171,8 @@ function sanitizePayload(payload) {
     showPresentedProjects: cleanBool(payload?.showPresentedProjects, true),
     showCommissions: cleanBool(payload?.showCommissions, true),
     showLaws: cleanBool(payload?.showLaws, true),
+    projectsPdfUrl: cleanUrl(payload?.projectsPdfUrl, 2048),
+    showProjectsPdfButton: cleanBool(payload?.showProjectsPdfButton, true),
   }
 }
 
