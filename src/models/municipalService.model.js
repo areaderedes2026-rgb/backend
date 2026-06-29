@@ -13,6 +13,8 @@ function parseJsonSafe(value, fallback) {
 
 function mapRow(row) {
   if (!row) return null
+  const summary = row.summary || ''
+  const description = row.description || summary
   return {
     id: row.id,
     slug: row.slug,
@@ -20,9 +22,12 @@ function mapRow(row) {
     category: row.category || '',
     mode: row.mode || '',
     eta: row.eta || '',
-    summary: row.summary || '',
+    summary,
+    description,
+    requirements: parseJsonSafe(row.requirements_json, []),
     docs: parseJsonSafe(row.docs_json, []),
-    linkHref: row.link_href || '',
+    linkUrl: row.link_href || '',
+    linkLabel: row.link_label || '',
     sortOrder: Number(row.sort_order) || 0,
     isActive: Boolean(row.is_active),
     updatedAt: row.updated_at,
@@ -52,8 +57,9 @@ export async function findMunicipalServiceBySlugAny(slug) {
 export async function createMunicipalServiceRow(payload) {
   const [result] = await pool.query(
     `INSERT INTO municipal_services (
-      slug, title, category, mode, eta, summary, docs_json, link_href, sort_order, is_active
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      slug, title, category, mode, eta, summary, description,
+      docs_json, requirements_json, link_href, link_label, sort_order, is_active
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       payload.slug,
       payload.title,
@@ -61,8 +67,11 @@ export async function createMunicipalServiceRow(payload) {
       payload.mode,
       payload.eta,
       payload.summary,
+      payload.description,
       JSON.stringify(payload.docs),
-      payload.linkHref,
+      JSON.stringify(payload.requirements),
+      payload.linkUrl,
+      payload.linkLabel,
       payload.sortOrder,
       payload.isActive ? 1 : 0,
     ],
@@ -79,8 +88,11 @@ export async function updateMunicipalServiceRow(id, payload) {
          mode = ?,
          eta = ?,
          summary = ?,
+         description = ?,
          docs_json = ?,
+         requirements_json = ?,
          link_href = ?,
+         link_label = ?,
          sort_order = ?,
          is_active = ?
      WHERE id = ?`,
@@ -91,8 +103,11 @@ export async function updateMunicipalServiceRow(id, payload) {
       payload.mode,
       payload.eta,
       payload.summary,
+      payload.description,
       JSON.stringify(payload.docs),
-      payload.linkHref,
+      JSON.stringify(payload.requirements),
+      payload.linkUrl,
+      payload.linkLabel,
       payload.sortOrder,
       payload.isActive ? 1 : 0,
       id,

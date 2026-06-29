@@ -132,25 +132,40 @@ function sanitizeContentPayload(payload) {
 
 function sanitizeServicePayload(payload, { forUpdate = false } = {}) {
   const title = cleanString(payload?.title, 180)
-  const summary = cleanMultiline(payload?.summary, 4000)
+  const summary = cleanMultiline(payload?.summary, 1200)
+  const description = cleanMultiline(payload?.description, 8000)
   if (!forUpdate && !title) throw new AppError('El título del trámite es obligatorio.', 400)
-  if (!forUpdate && !summary) throw new AppError('La descripción del trámite es obligatoria.', 400)
+  if (!forUpdate && !summary && !description) {
+    throw new AppError('El resumen o la descripción del trámite es obligatorio.', 400)
+  }
+  const resolvedSummary = summary || description.slice(0, 1200)
+  const resolvedDescription = description || resolvedSummary
   return {
     title,
     slug: cleanString(payload?.slug, 90),
     category: cleanString(payload?.category, 80),
     mode: cleanString(payload?.mode, 140),
     eta: cleanString(payload?.eta, 120),
-    summary,
+    summary: resolvedSummary,
+    description: resolvedDescription,
+    requirements: cleanList(
+      payload?.requirements,
+      (item) => {
+        const text = cleanString(item, 400)
+        return text || null
+      },
+      30,
+    ),
     docs: cleanList(
       payload?.docs,
       (item) => {
         const text = cleanString(item, 200)
         return text || null
       },
-      20,
+      30,
     ),
-    linkHref: cleanUrl(payload?.linkHref, 2048) || '/atencion-ciudadano',
+    linkUrl: cleanUrl(payload?.linkUrl ?? payload?.linkHref, 2048),
+    linkLabel: cleanString(payload?.linkLabel, 140),
     sortOrder: Number.isFinite(Number(payload?.sortOrder))
       ? Math.max(Number(payload.sortOrder), 0)
       : 0,
@@ -198,6 +213,7 @@ export async function editMunicipalService(id, body) {
     ...data,
     title: data.title || existing.title,
     summary: data.summary || existing.summary,
+    description: data.description || existing.description || existing.summary,
     slug,
   })
 }
