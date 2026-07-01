@@ -76,6 +76,7 @@ function sanitizeContentPayload(payload) {
     heroEyebrow: cleanString(payload?.heroEyebrow, 120),
     heroTitle: cleanString(payload?.heroTitle, 180),
     heroSubtitle: cleanMultiline(payload?.heroSubtitle, 2500),
+    heroSearchPlaceholder: cleanString(payload?.heroSearchPlaceholder, 180) || '¿Qué trámite estás buscando?',
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
     heroPrimaryLabel: cleanString(payload?.heroPrimaryLabel, 80),
     heroPrimaryHref: cleanUrl(payload?.heroPrimaryHref, 2048) || '#tramites-disponibles',

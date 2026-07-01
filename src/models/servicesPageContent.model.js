@@ -17,6 +17,7 @@ function mapContentRow(row) {
     heroEyebrow: row.hero_eyebrow || '',
     heroTitle: row.hero_title || '',
     heroSubtitle: row.hero_subtitle || '',
+    heroSearchPlaceholder: row.hero_search_placeholder || '¿Qué trámite estás buscando?',
     heroImageUrl: row.hero_image_url || '',
     heroPrimaryLabel: row.hero_primary_label || '',
     heroPrimaryHref: row.hero_primary_href || '',
@@ -50,6 +51,7 @@ export async function upsertServicesPageContentRow(payload) {
       hero_eyebrow,
       hero_title,
       hero_subtitle,
+      hero_search_placeholder,
       hero_image_url,
       hero_primary_label,
       hero_primary_href,
@@ -67,11 +69,12 @@ export async function upsertServicesPageContentRow(payload) {
       final_primary_href,
       final_secondary_label,
       final_secondary_href
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
       hero_subtitle = VALUES(hero_subtitle),
+      hero_search_placeholder = VALUES(hero_search_placeholder),
       hero_image_url = VALUES(hero_image_url),
       hero_primary_label = VALUES(hero_primary_label),
       hero_primary_href = VALUES(hero_primary_href),
@@ -93,6 +96,7 @@ export async function upsertServicesPageContentRow(payload) {
       payload.heroEyebrow,
       payload.heroTitle,
       payload.heroSubtitle,
+      payload.heroSearchPlaceholder,
       payload.heroImageUrl,
       payload.heroPrimaryLabel,
       payload.heroPrimaryHref,
