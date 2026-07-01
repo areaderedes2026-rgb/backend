@@ -29,6 +29,12 @@ function mapContentRow(row) {
     proceduresEyebrow: row.procedures_eyebrow || '',
     proceduresTitle: row.procedures_title || '',
     faq: parseJsonSafe(row.faq_json, []),
+    sectionVisibility: parseJsonSafe(row.section_visibility_json, {
+      processGuide: true,
+      categories: true,
+      faq: true,
+      finalCta: true,
+    }),
     finalCtaTitle: row.final_cta_title || '',
     finalCtaText: row.final_cta_text || '',
     finalPrimaryLabel: row.final_primary_label || '',
@@ -63,13 +69,14 @@ export async function upsertServicesPageContentRow(payload) {
       procedures_eyebrow,
       procedures_title,
       faq_json,
+      section_visibility_json,
       final_cta_title,
       final_cta_text,
       final_primary_label,
       final_primary_href,
       final_secondary_label,
       final_secondary_href
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
@@ -86,6 +93,7 @@ export async function upsertServicesPageContentRow(payload) {
       procedures_eyebrow = VALUES(procedures_eyebrow),
       procedures_title = VALUES(procedures_title),
       faq_json = VALUES(faq_json),
+      section_visibility_json = VALUES(section_visibility_json),
       final_cta_title = VALUES(final_cta_title),
       final_cta_text = VALUES(final_cta_text),
       final_primary_label = VALUES(final_primary_label),
@@ -108,6 +116,7 @@ export async function upsertServicesPageContentRow(payload) {
       payload.proceduresEyebrow,
       payload.proceduresTitle,
       JSON.stringify(payload.faq),
+      JSON.stringify(payload.sectionVisibility || {}),
       payload.finalCtaTitle,
       payload.finalCtaText,
       payload.finalPrimaryLabel,

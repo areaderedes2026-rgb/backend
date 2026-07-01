@@ -154,6 +154,12 @@ function sanitizeContentPayload(payload) {
     finalPrimaryHref: cleanUrl(payload?.finalPrimaryHref, 2048) || '/atencion-ciudadano',
     finalSecondaryLabel: cleanString(payload?.finalSecondaryLabel, 80),
     finalSecondaryHref: cleanUrl(payload?.finalSecondaryHref, 2048) || '/news',
+    sectionVisibility: {
+      processGuide: payload?.sectionVisibility?.processGuide !== false,
+      categories: payload?.sectionVisibility?.categories !== false,
+      faq: payload?.sectionVisibility?.faq !== false,
+      finalCta: payload?.sectionVisibility?.finalCta !== false,
+    },
   }
 }
 
