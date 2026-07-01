@@ -100,11 +100,37 @@ function sanitizeContentPayload(payload) {
     ),
     categories: cleanList(
       payload?.categories,
-      (item) => {
-        const text = cleanString(item, 80)
-        return text || null
+      (item, index) => {
+        if (item == null) return null
+        if (typeof item === 'string') {
+          const name = cleanString(item, 80)
+          if (!name) return null
+          const slug = slugify(name) || `categoria-${index + 1}`
+          return {
+            id: `svc-cat-${slug}`,
+            slug,
+            name,
+            icon: 'default',
+            sortOrder: (index + 1) * 10,
+            enabled: true,
+          }
+        }
+        if (typeof item !== 'object') return null
+        const name = cleanString(item?.name, 80)
+        if (!name) return null
+        const slug = slugify(cleanString(item?.slug, 90) || name) || `categoria-${index + 1}`
+        return {
+          id: cleanString(item?.id, 60) || `svc-cat-${slug}`,
+          slug,
+          name,
+          icon: cleanString(item?.icon, 40) || 'default',
+          sortOrder: Number.isFinite(Number(item?.sortOrder))
+            ? Math.max(Number(item.sortOrder), 0)
+            : (index + 1) * 10,
+          enabled: item?.enabled !== false,
+        }
       },
-      24,
+      32,
     ),
     proceduresEyebrow: cleanString(payload?.proceduresEyebrow, 120),
     proceduresTitle: cleanString(payload?.proceduresTitle, 180),
