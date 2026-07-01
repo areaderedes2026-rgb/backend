@@ -30,11 +30,60 @@ function cleanList(list, mapper, maxItems = 50) {
   return out
 }
 
+function cleanBool(value, fallback = true) {
+  if (value === false) return false
+  if (value === true) return true
+  return fallback
+}
+
+function sanitizeSectionVisibility(raw) {
+  const base = {
+    introStory: true,
+    legacyCards: true,
+    documentary: true,
+    closing: true,
+  }
+  if (!raw || typeof raw !== 'object') return base
+  return {
+    introStory: cleanBool(raw.introStory, base.introStory),
+    legacyCards: cleanBool(raw.legacyCards, base.legacyCards),
+    documentary: cleanBool(raw.documentary, base.documentary),
+    closing: cleanBool(raw.closing, base.closing),
+  }
+}
+
+function sanitizeDocumentary(raw) {
+  const title = cleanString(raw?.title, 180)
+  const description = cleanMultiline(raw?.description, 2000)
+  const rawChapters = Array.isArray(raw?.chapters) ? raw.chapters.slice(0, 40) : []
+  const chapters = []
+  for (let index = 0; index < rawChapters.length; index += 1) {
+    const item = rawChapters[index]
+    const chapterTitle = cleanString(item?.title, 180)
+    if (!chapterTitle) continue
+    const id = cleanString(item?.id, 60) || `doc-ch-${index + 1}`
+    const driveUrl = cleanUrl(item?.driveUrl || item?.linkUrl, 2048)
+    const sortOrder = Number.isFinite(Number(item?.sortOrder))
+      ? Math.max(Number(item.sortOrder), 0)
+      : (index + 1) * 10
+    chapters.push({
+      id,
+      title: chapterTitle,
+      description: cleanString(item?.description, 800),
+      driveUrl,
+      sortOrder,
+    })
+  }
+  chapters.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'es'))
+  return { title, description, chapters }
+}
+
 function sanitizePayload(payload) {
   return {
     heroBadge: cleanString(payload?.heroBadge, 120),
     heroTitle: cleanString(payload?.heroTitle, 180),
     heroSubtitle: cleanString(payload?.heroSubtitle, 1200),
+    heroSearchPlaceholder: cleanString(payload?.heroSearchPlaceholder, 180),
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
     introStory: cleanMultiline(payload?.introStory, 7000),
     ctaPrimaryLabel: cleanString(payload?.ctaPrimaryLabel, 80),
@@ -51,6 +100,8 @@ function sanitizePayload(payload) {
       },
       12,
     ),
+    sectionVisibility: sanitizeSectionVisibility(payload?.sectionVisibility),
+    documentary: sanitizeDocumentary(payload?.documentary),
     tourismCategories: cleanList(
       payload?.tourismCategories,
       (item) => {

@@ -11,12 +11,26 @@ function parseJsonSafe(value, fallback) {
   }
 }
 
+const DEFAULT_SECTION_VISIBILITY = {
+  introStory: true,
+  legacyCards: true,
+  documentary: true,
+  closing: true,
+}
+
+const DEFAULT_DOCUMENTARY = {
+  title: '',
+  description: '',
+  chapters: [],
+}
+
 function mapHistoryRow(row) {
   if (!row) return null
   return {
     heroBadge: row.hero_badge || '',
     heroTitle: row.hero_title || '',
     heroSubtitle: row.hero_subtitle || '',
+    heroSearchPlaceholder: row.hero_search_placeholder || '',
     heroImageUrl: row.hero_image_url || '',
     introStory: row.intro_story_text || '',
     ctaPrimaryLabel: row.cta_primary_label || '',
@@ -24,6 +38,8 @@ function mapHistoryRow(row) {
     ctaSecondaryLabel: row.cta_secondary_label || '',
     ctaSecondaryHref: row.cta_secondary_href || '',
     legacyItems: parseJsonSafe(row.legacy_items_json, []),
+    sectionVisibility: parseJsonSafe(row.section_visibility_json, DEFAULT_SECTION_VISIBILITY),
+    documentary: parseJsonSafe(row.documentary_json, DEFAULT_DOCUMENTARY),
     tourismCategories: parseJsonSafe(row.tourism_categories_json, []),
     tourismSpots: parseJsonSafe(row.tourism_spots_json, []),
     closingTitle: row.closing_title || '',
@@ -44,6 +60,7 @@ export async function upsertHistoryContentRow(payload) {
       hero_badge,
       hero_title,
       hero_subtitle,
+      hero_search_placeholder,
       hero_image_url,
       intro_story_text,
       cta_primary_label,
@@ -51,15 +68,18 @@ export async function upsertHistoryContentRow(payload) {
       cta_secondary_label,
       cta_secondary_href,
       legacy_items_json,
+      section_visibility_json,
+      documentary_json,
       tourism_categories_json,
       tourism_spots_json,
       closing_title,
       closing_text
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_badge = VALUES(hero_badge),
       hero_title = VALUES(hero_title),
       hero_subtitle = VALUES(hero_subtitle),
+      hero_search_placeholder = VALUES(hero_search_placeholder),
       hero_image_url = VALUES(hero_image_url),
       intro_story_text = VALUES(intro_story_text),
       cta_primary_label = VALUES(cta_primary_label),
@@ -67,6 +87,8 @@ export async function upsertHistoryContentRow(payload) {
       cta_secondary_label = VALUES(cta_secondary_label),
       cta_secondary_href = VALUES(cta_secondary_href),
       legacy_items_json = VALUES(legacy_items_json),
+      section_visibility_json = VALUES(section_visibility_json),
+      documentary_json = VALUES(documentary_json),
       tourism_categories_json = VALUES(tourism_categories_json),
       tourism_spots_json = VALUES(tourism_spots_json),
       closing_title = VALUES(closing_title),
@@ -76,6 +98,7 @@ export async function upsertHistoryContentRow(payload) {
       payload.heroBadge,
       payload.heroTitle,
       payload.heroSubtitle,
+      payload.heroSearchPlaceholder,
       payload.heroImageUrl,
       payload.introStory,
       payload.ctaPrimaryLabel,
@@ -83,6 +106,8 @@ export async function upsertHistoryContentRow(payload) {
       payload.ctaSecondaryLabel,
       payload.ctaSecondaryHref,
       JSON.stringify(payload.legacyItems),
+      JSON.stringify(payload.sectionVisibility),
+      JSON.stringify(payload.documentary),
       JSON.stringify(payload.tourismCategories),
       JSON.stringify(payload.tourismSpots),
       payload.closingTitle,
