@@ -12,7 +12,7 @@ function parseJsonSafe(value, fallback) {
 }
 
 const DEFAULT_SECTION_VISIBILITY = {
-  introStory: true,
+  storySections: true,
   legacyCards: true,
   documentary: true,
   closing: true,
@@ -33,6 +33,7 @@ function mapHistoryRow(row) {
     heroSearchPlaceholder: row.hero_search_placeholder || '',
     heroImageUrl: row.hero_image_url || '',
     introStory: row.intro_story_text || '',
+    storySections: parseJsonSafe(row.story_sections_json, []),
     ctaPrimaryLabel: row.cta_primary_label || '',
     ctaPrimaryHref: row.cta_primary_href || '',
     ctaSecondaryLabel: row.cta_secondary_label || '',
@@ -63,6 +64,7 @@ export async function upsertHistoryContentRow(payload) {
       hero_search_placeholder,
       hero_image_url,
       intro_story_text,
+      story_sections_json,
       cta_primary_label,
       cta_primary_href,
       cta_secondary_label,
@@ -74,7 +76,7 @@ export async function upsertHistoryContentRow(payload) {
       tourism_spots_json,
       closing_title,
       closing_text
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_badge = VALUES(hero_badge),
       hero_title = VALUES(hero_title),
@@ -82,6 +84,7 @@ export async function upsertHistoryContentRow(payload) {
       hero_search_placeholder = VALUES(hero_search_placeholder),
       hero_image_url = VALUES(hero_image_url),
       intro_story_text = VALUES(intro_story_text),
+      story_sections_json = VALUES(story_sections_json),
       cta_primary_label = VALUES(cta_primary_label),
       cta_primary_href = VALUES(cta_primary_href),
       cta_secondary_label = VALUES(cta_secondary_label),
@@ -101,6 +104,7 @@ export async function upsertHistoryContentRow(payload) {
       payload.heroSearchPlaceholder,
       payload.heroImageUrl,
       payload.introStory,
+      JSON.stringify(payload.storySections),
       payload.ctaPrimaryLabel,
       payload.ctaPrimaryHref,
       payload.ctaSecondaryLabel,

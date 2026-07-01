@@ -38,18 +38,62 @@ function cleanBool(value, fallback = true) {
 
 function sanitizeSectionVisibility(raw) {
   const base = {
-    introStory: true,
+    storySections: true,
     legacyCards: true,
     documentary: true,
     closing: true,
   }
   if (!raw || typeof raw !== 'object') return base
+  const storyVisible = cleanBool(raw.storySections, true) && cleanBool(raw.introStory, true)
   return {
-    introStory: cleanBool(raw.introStory, base.introStory),
+    storySections: storyVisible,
     legacyCards: cleanBool(raw.legacyCards, base.legacyCards),
     documentary: cleanBool(raw.documentary, base.documentary),
     closing: cleanBool(raw.closing, base.closing),
   }
+}
+
+function sanitizeStorySections(raw) {
+  const rawSections = Array.isArray(raw) ? raw.slice(0, 30) : []
+  const sections = []
+  for (let index = 0; index < rawSections.length; index += 1) {
+    const item = rawSections[index]
+    const title = cleanString(item?.title, 180)
+    if (!title) continue
+    const id = cleanString(item?.id, 60) || `story-${index + 1}`
+    const subtitle = cleanString(item?.subtitle, 280)
+    const paragraphs = cleanList(
+      item?.paragraphs,
+      (paragraph) => {
+        const text = cleanMultiline(paragraph, 4000)
+        return text || null
+      },
+      30,
+    )
+    const images = []
+    const rawImages = Array.isArray(item?.images) ? item.images.slice(0, 12) : []
+    for (let imageIndex = 0; imageIndex < rawImages.length; imageIndex += 1) {
+      const image = rawImages[imageIndex]
+      const imageUrl = cleanUrl(image?.imageUrl || image?.url, 2048)
+      const caption = cleanString(image?.caption, 220)
+      if (!imageUrl && !caption) continue
+      images.push({
+        id: cleanString(image?.id, 60) || `hist-img-${index + 1}-${imageIndex + 1}`,
+        imageUrl,
+        caption,
+        sortOrder: Number.isFinite(Number(image?.sortOrder))
+          ? Math.max(Number(image.sortOrder), 0)
+          : (imageIndex + 1) * 10,
+      })
+    }
+    images.sort((a, b) => a.sortOrder - b.sortOrder)
+    const sortOrder = Number.isFinite(Number(item?.sortOrder))
+      ? Math.max(Number(item.sortOrder), 0)
+      : (index + 1) * 10
+    sections.push({ id, title, subtitle, paragraphs, images, sortOrder })
+  }
+  sections.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'es'))
+  return sections
 }
 
 function sanitizeDocumentary(raw) {
@@ -79,13 +123,18 @@ function sanitizeDocumentary(raw) {
 }
 
 function sanitizePayload(payload) {
+  const storySections = sanitizeStorySections(payload?.storySections)
+  const introStory =
+    storySections[0]?.paragraphs?.join('\n\n') || cleanMultiline(payload?.introStory, 7000)
+
   return {
     heroBadge: cleanString(payload?.heroBadge, 120),
     heroTitle: cleanString(payload?.heroTitle, 180),
     heroSubtitle: cleanString(payload?.heroSubtitle, 1200),
     heroSearchPlaceholder: cleanString(payload?.heroSearchPlaceholder, 180),
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
-    introStory: cleanMultiline(payload?.introStory, 7000),
+    introStory,
+    storySections,
     ctaPrimaryLabel: cleanString(payload?.ctaPrimaryLabel, 80),
     ctaPrimaryHref: cleanUrl(payload?.ctaPrimaryHref, 2048),
     ctaSecondaryLabel: cleanString(payload?.ctaSecondaryLabel, 80),
