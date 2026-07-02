@@ -3,26 +3,7 @@ import {
   upsertAreasPageContentRow,
 } from '../models/areasPage.model.js'
 import { assertOptimisticLock } from '../utils/concurrency.js'
-
-function cleanString(value, maxLen = 0) {
-  const out = String(value || '').trim()
-  if (!maxLen) return out
-  return out.slice(0, maxLen)
-}
-
-function cleanUrl(value, maxLen = 2048) {
-  const out = cleanString(value, maxLen)
-  if (!out) return ''
-  if (out.startsWith('http://') || out.startsWith('https://') || out.startsWith('/')) {
-    return out
-  }
-  return ''
-}
-
-function cleanNumber(value, fallback) {
-  const n = Number(value)
-  return Number.isFinite(n) ? n : fallback
-}
+import { sanitizePageHeroCoverPayload } from '../utils/pageHeroCover.js'
 
 export async function getAreasPageContent() {
   return getAreasPageContentRow()
@@ -36,11 +17,5 @@ export async function saveAreasPageContent(payload) {
     'contenido de áreas',
     Boolean(payload?.forceOverwrite),
   )
-  return upsertAreasPageContentRow({
-    heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
-    overlayOpacity: Math.min(
-      90,
-      Math.max(0, Math.round(cleanNumber(payload?.overlayOpacity, current?.overlayOpacity ?? 65))),
-    ),
-  })
+  return upsertAreasPageContentRow(sanitizePageHeroCoverPayload(payload, { current }))
 }
