@@ -19,6 +19,11 @@ function cleanUrl(value, maxLen = 2048) {
   return ''
 }
 
+function cleanNumber(value, fallback) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
 export async function getAreasPageContent() {
   return getAreasPageContentRow()
 }
@@ -33,5 +38,9 @@ export async function saveAreasPageContent(payload) {
   )
   return upsertAreasPageContentRow({
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
+    overlayOpacity: Math.min(
+      90,
+      Math.max(0, Math.round(cleanNumber(payload?.overlayOpacity, current?.overlayOpacity ?? 65))),
+    ),
   })
 }
