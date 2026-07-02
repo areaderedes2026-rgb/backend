@@ -71,6 +71,18 @@ async function ensureUniqueSlug(baseSlug, currentId = 0) {
   }
 }
 
+function cleanNumber(value, fallback) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function cleanBool(value, fallback = true) {
+  if (typeof value === 'boolean') return value
+  if (value === 0 || value === '0' || value === 'false') return false
+  if (value === 1 || value === '1' || value === 'true') return true
+  return fallback
+}
+
 function sanitizeContentPayload(payload) {
   return {
     heroEyebrow: cleanString(payload?.heroEyebrow, 120),
@@ -78,10 +90,20 @@ function sanitizeContentPayload(payload) {
     heroSubtitle: cleanMultiline(payload?.heroSubtitle, 2500),
     heroSearchPlaceholder: cleanString(payload?.heroSearchPlaceholder, 180) || '¿Qué trámite estás buscando?',
     heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
+    overlayOpacity: Math.min(
+      90,
+      Math.max(0, Math.round(cleanNumber(payload?.overlayOpacity, 65))),
+    ),
     heroPrimaryLabel: cleanString(payload?.heroPrimaryLabel, 80),
-    heroPrimaryHref: cleanUrl(payload?.heroPrimaryHref, 2048) || '#tramites-disponibles',
+    heroPrimaryHref: cleanUrl(payload?.heroPrimaryHref, 2048) || '#categorias-tramites',
     heroSecondaryLabel: cleanString(payload?.heroSecondaryLabel, 80),
     heroSecondaryHref: cleanUrl(payload?.heroSecondaryHref, 2048) || '/atencion-ciudadano',
+    showHeroBadge: cleanBool(payload?.showHeroBadge, true),
+    showHeroTitle: cleanBool(payload?.showHeroTitle, true),
+    showHeroSubtitle: cleanBool(payload?.showHeroSubtitle, true),
+    showSearch: cleanBool(payload?.showSearch, true),
+    showPrimaryButton: cleanBool(payload?.showPrimaryButton, true),
+    showSecondaryButton: cleanBool(payload?.showSecondaryButton, true),
     steps: cleanList(
       payload?.steps,
       (item) => {
