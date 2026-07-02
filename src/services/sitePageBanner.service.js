@@ -32,6 +32,11 @@ export async function getSitePageBanner(pageKeyRaw) {
   return getSitePageBannerRow(pageKey)
 }
 
+function cleanNumber(value, fallback) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
 export async function saveSitePageBanner(pageKeyRaw, payload) {
   const pageKey = cleanPageKey(pageKeyRaw)
   assertAllowedPageKey(pageKey)
@@ -44,5 +49,9 @@ export async function saveSitePageBanner(pageKeyRaw, payload) {
   )
   return upsertSitePageBannerRow(pageKey, {
     heroImageUrl: cleanUrl(payload?.heroImageUrl),
+    overlayOpacity: Math.min(
+      90,
+      Math.max(0, Math.round(cleanNumber(payload?.overlayOpacity, current?.overlayOpacity ?? 65))),
+    ),
   })
 }
