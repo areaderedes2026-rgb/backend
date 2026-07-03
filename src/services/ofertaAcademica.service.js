@@ -3,6 +3,7 @@ import {
   upsertOfertaAcademicaContentRow,
 } from '../models/ofertaAcademica.model.js'
 import { assertOptimisticLock } from '../utils/concurrency.js'
+import { sanitizePageHeroCoverPayload } from '../utils/pageHeroCover.js'
 
 const OFFER_SUMMARY_MAX = 3000
 const OFFER_DETAIL_MAX = 2500
@@ -135,14 +136,59 @@ function sanitizeOffers(input, categories) {
   return out
 }
 
-function sanitizePayload(payload) {
+function sanitizePayload(payload, { current } = {}) {
   const categories = sanitizeCategories(payload?.categories)
   const categorySet = new Set(categories)
+  const heroCover = sanitizePageHeroCoverPayload(
+    {
+      heroImageUrl: payload?.heroImageUrl,
+      overlayOpacity: payload?.overlayOpacity,
+      heroBadge: payload?.heroEyebrow,
+      heroTitle: payload?.heroTitle,
+      heroSubtitle: payload?.heroSubtitle,
+      heroSearchPlaceholder: payload?.heroSearchPlaceholder,
+      showHeroBadge: payload?.showHeroBadge,
+      showHeroTitle: payload?.showHeroTitle,
+      showHeroSubtitle: payload?.showHeroSubtitle,
+      showSearch: payload?.showSearch,
+      showPrimaryButton: payload?.showPrimaryButton,
+      primaryLabel: payload?.heroPrimaryLabel,
+      primaryHref: payload?.heroPrimaryHref,
+      showSecondaryButton: payload?.showSecondaryButton,
+      secondaryLabel: payload?.heroSecondaryLabel,
+      secondaryHref: payload?.heroSecondaryHref,
+    },
+    {
+      current: current
+        ? {
+            overlayOpacity: current.overlayOpacity,
+            showHeroBadge: current.showHeroBadge,
+            showHeroTitle: current.showHeroTitle,
+            showHeroSubtitle: current.showHeroSubtitle,
+            showSearch: current.showSearch,
+            showPrimaryButton: current.showPrimaryButton,
+            showSecondaryButton: current.showSecondaryButton,
+          }
+        : undefined,
+    },
+  )
   return {
-    heroEyebrow: cleanString(payload?.heroEyebrow, 180),
-    heroTitle: cleanString(payload?.heroTitle, 220),
-    heroSubtitle: cleanMultiline(payload?.heroSubtitle, 2500),
-    heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
+    heroEyebrow: heroCover.heroBadge,
+    heroTitle: heroCover.heroTitle,
+    heroSubtitle: heroCover.heroSubtitle,
+    heroImageUrl: heroCover.heroImageUrl,
+    overlayOpacity: heroCover.overlayOpacity,
+    heroPrimaryLabel: heroCover.primaryLabel,
+    heroPrimaryHref: heroCover.primaryHref,
+    heroSecondaryLabel: heroCover.secondaryLabel,
+    heroSecondaryHref: heroCover.secondaryHref,
+    heroSearchPlaceholder: heroCover.heroSearchPlaceholder,
+    showHeroBadge: heroCover.showHeroBadge,
+    showHeroTitle: heroCover.showHeroTitle,
+    showHeroSubtitle: heroCover.showHeroSubtitle,
+    showSearch: heroCover.showSearch,
+    showPrimaryButton: heroCover.showPrimaryButton,
+    showSecondaryButton: heroCover.showSecondaryButton,
     introTitle: cleanString(payload?.introTitle, 220),
     introParagraphs: sanitizeParagraphs(payload?.introParagraphs),
     highlights: sanitizeHighlights(payload?.highlights),
@@ -165,6 +211,6 @@ export async function saveOfertaAcademicaContent(payload) {
     'contenido de oferta académica',
     Boolean(payload?.forceOverwrite),
   )
-  const data = sanitizePayload(payload)
+  const data = sanitizePayload(payload, { current })
   return upsertOfertaAcademicaContentRow(data)
 }

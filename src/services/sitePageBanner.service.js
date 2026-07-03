@@ -6,7 +6,7 @@ import { AppError } from '../utils/AppError.js'
 import { assertOptimisticLock } from '../utils/concurrency.js'
 import { sanitizePageHeroCoverPayload } from '../utils/pageHeroCover.js'
 
-const ALLOWED_PAGE_KEYS = new Set(['news', 'events'])
+const ALLOWED_PAGE_KEYS = new Set(['news', 'events', 'tourism'])
 
 function cleanPageKey(value) {
   return String(value || '').trim().toLowerCase()

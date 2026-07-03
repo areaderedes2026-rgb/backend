@@ -76,19 +76,29 @@ export async function upsertSitePageBannerRow(pageKey, payload) {
     [
       pageKey,
       payload.heroImageUrl || '',
-      Number(payload.overlayOpacity) || 65,
+      Math.min(
+        90,
+        Math.max(
+          0,
+          Math.round(
+            Number.isFinite(Number(payload.overlayOpacity))
+              ? Number(payload.overlayOpacity)
+              : 65,
+          ),
+        ),
+      ),
       payload.heroBadge || '',
       payload.heroTitle || '',
       payload.heroSubtitle || '',
       payload.heroSearchPlaceholder || '',
-      payload.showHeroBadge ? 1 : 0,
-      payload.showHeroTitle ? 1 : 0,
-      payload.showHeroSubtitle ? 1 : 0,
-      payload.showSearch ? 1 : 0,
-      payload.showPrimaryButton ? 1 : 0,
+      payload.showHeroBadge !== false ? 1 : 0,
+      payload.showHeroTitle !== false ? 1 : 0,
+      payload.showHeroSubtitle !== false ? 1 : 0,
+      payload.showSearch !== false ? 1 : 0,
+      payload.showPrimaryButton === true ? 1 : 0,
       payload.primaryLabel || '',
       payload.primaryHref || '',
-      payload.showSecondaryButton ? 1 : 0,
+      payload.showSecondaryButton === true ? 1 : 0,
       payload.secondaryLabel || '',
       payload.secondaryHref || '',
     ],
