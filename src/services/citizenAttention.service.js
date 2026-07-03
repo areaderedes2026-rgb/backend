@@ -10,6 +10,7 @@ import {
 } from '../models/citizenAttention.model.js'
 import { AppError } from '../utils/AppError.js'
 import { assertOptimisticLock } from '../utils/concurrency.js'
+import { sanitizePageHeroCoverPayload } from '../utils/pageHeroCover.js'
 
 const ALLOWED_ICONS = new Set(['building', 'phone', 'mail', 'share'])
 const ALLOWED_STATUSES = new Set(['sin_resolver', 'leida', 'resuelta'])
@@ -52,12 +53,57 @@ function cleanList(list, mapper, maxItems = 40) {
   return out
 }
 
-function sanitizeContentPayload(payload) {
+function sanitizeContentPayload(payload, { current } = {}) {
+  const heroCover = sanitizePageHeroCoverPayload(
+    {
+      heroImageUrl: payload?.heroImageUrl,
+      overlayOpacity: payload?.overlayOpacity,
+      heroBadge: payload?.heroEyebrow,
+      heroTitle: payload?.heroTitle,
+      heroSubtitle: payload?.heroSubtitle,
+      heroSearchPlaceholder: payload?.heroSearchPlaceholder,
+      showHeroBadge: payload?.showHeroBadge,
+      showHeroTitle: payload?.showHeroTitle,
+      showHeroSubtitle: payload?.showHeroSubtitle,
+      showSearch: payload?.showSearch,
+      showPrimaryButton: payload?.showPrimaryButton,
+      primaryLabel: payload?.heroPrimaryLabel,
+      primaryHref: payload?.heroPrimaryHref,
+      showSecondaryButton: payload?.showSecondaryButton,
+      secondaryLabel: payload?.heroSecondaryLabel,
+      secondaryHref: payload?.heroSecondaryHref,
+    },
+    {
+      current: current
+        ? {
+            overlayOpacity: current.overlayOpacity,
+            showHeroBadge: current.showHeroBadge,
+            showHeroTitle: current.showHeroTitle,
+            showHeroSubtitle: current.showHeroSubtitle,
+            showSearch: current.showSearch,
+            showPrimaryButton: current.showPrimaryButton,
+            showSecondaryButton: current.showSecondaryButton,
+          }
+        : undefined,
+    },
+  )
   return {
-    heroEyebrow: cleanString(payload?.heroEyebrow, 120),
-    heroTitle: cleanString(payload?.heroTitle, 180),
-    heroSubtitle: cleanMultiline(payload?.heroSubtitle, 1600),
-    heroImageUrl: cleanUrl(payload?.heroImageUrl, 2048),
+    heroEyebrow: heroCover.heroBadge,
+    heroTitle: heroCover.heroTitle,
+    heroSubtitle: heroCover.heroSubtitle,
+    heroImageUrl: heroCover.heroImageUrl,
+    overlayOpacity: heroCover.overlayOpacity,
+    heroPrimaryLabel: heroCover.primaryLabel,
+    heroPrimaryHref: heroCover.primaryHref,
+    heroSecondaryLabel: heroCover.secondaryLabel,
+    heroSecondaryHref: heroCover.secondaryHref,
+    heroSearchPlaceholder: heroCover.heroSearchPlaceholder,
+    showHeroBadge: heroCover.showHeroBadge,
+    showHeroTitle: heroCover.showHeroTitle,
+    showHeroSubtitle: heroCover.showHeroSubtitle,
+    showSearch: heroCover.showSearch,
+    showPrimaryButton: heroCover.showPrimaryButton,
+    showSecondaryButton: heroCover.showSecondaryButton,
     channels: cleanList(
       payload?.channels,
       (item, idx) => {
@@ -174,7 +220,7 @@ export async function saveCitizenAttentionContent(payload) {
     'contenido de atención ciudadana',
     Boolean(payload?.forceOverwrite),
   )
-  const data = sanitizeContentPayload(payload)
+  const data = sanitizeContentPayload(payload, { current })
   if (Object.prototype.hasOwnProperty.call(payload || {}, 'inquiryWhatsappMessage')) {
     const raw = cleanMultiline(payload?.inquiryWhatsappMessage, 3500)
     data.inquiryWhatsappMessage = raw && raw.trim() ? raw : null
