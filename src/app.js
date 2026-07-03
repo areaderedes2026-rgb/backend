@@ -12,6 +12,7 @@ import citizenAttentionRoutes from './routes/citizenAttention.routes.js'
 import municipalServicesRoutes from './routes/municipalServices.routes.js'
 import homeHeroRoutes from './routes/homeHero.routes.js'
 import homeMapRoutes from './routes/homeMap.routes.js'
+import homeEmergencyRoutes from './routes/homeEmergency.routes.js'
 import uploadRoutes from './routes/upload.routes.js'
 import intendenciaRoutes from './routes/intendencia.routes.js'
 import legisladorEsteRoutes from './routes/legisladorEste.routes.js'
@@ -65,6 +66,7 @@ app.use('/api/citizen-attention', citizenAttentionRoutes)
 app.use('/api/municipal-services', municipalServicesRoutes)
 app.use('/api/home-hero', homeHeroRoutes)
 app.use('/api/home-map', homeMapRoutes)
+app.use('/api/home-emergency', homeEmergencyRoutes)
 app.use('/api/intendencia', intendenciaRoutes)
 app.use('/api/legislador-este', legisladorEsteRoutes)
 app.use('/api/concejo-deliberante', concejoDeliberanteRoutes)
