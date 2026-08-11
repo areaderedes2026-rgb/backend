@@ -81,8 +81,15 @@ function serviceSubtitle(areaTitle, service, normalizedQuery) {
  * @returns {Promise<Array<{ kind: string, id: string, title: string, subtitle: string, path: string }>>}
  */
 export async function runGlobalSearch(normalized) {
-  const { newsRows, eventRows, areaRows, profileRows, areaServiceRows, tourismRows } =
-    await searchPublicDatabase(normalized)
+  const {
+    newsRows,
+    eventRows,
+    areaRows,
+    profileRows,
+    areaServiceRows,
+    tourismRows,
+    gastronomyRows = [],
+  } = await searchPublicDatabase(normalized)
   const normalizedQuery = normalizeText(normalized)
 
   const byPath = new Map()
@@ -179,6 +186,33 @@ export async function runGlobalSearch(normalized) {
       subtitle: excerpt(r.snippet, 120),
       path: `/turismo/lugares/${encodeURIComponent(slug)}`,
     })
+  }
+
+  const gastronomyVenues = parseJsonSafe(gastronomyRows[0]?.venues_json, [])
+  if (Array.isArray(gastronomyVenues)) {
+    gastronomyVenues
+      .filter((venue) => venue && venue.isActive !== false)
+      .filter((venue) => {
+        const haystack = normalizeText(
+          [venue.name, venue.category, venue.location, venue.description, venue.phone].join(' '),
+        )
+        return haystack.includes(normalizedQuery)
+      })
+      .slice(0, 8)
+      .forEach((venue) => {
+        const id = String(venue.id || venue.name || '')
+        if (!id) return
+        add({
+          kind: 'gastronomy',
+          id,
+          title: String(venue.name || ''),
+          subtitle: excerpt(
+            [venue.category, venue.location, venue.description].filter(Boolean).join(' · '),
+            120,
+          ),
+          path: `/catalogo-gastronomico#local-${encodeURIComponent(id)}`,
+        })
+      })
   }
 
   return [...byPath.values()]

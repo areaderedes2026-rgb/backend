@@ -72,5 +72,23 @@ export async function searchPublicDatabase(raw) {
     [like, like, like, lim],
   )
 
-  return { newsRows, eventRows, areaRows, profileRows, areaServiceRows, tourismRows }
+  let gastronomyRows = []
+  try {
+    const [rows] = await pool.query(
+      'SELECT venues_json FROM gastronomic_catalog_content WHERE id = 1 LIMIT 1',
+    )
+    gastronomyRows = rows
+  } catch {
+    gastronomyRows = []
+  }
+
+  return {
+    newsRows,
+    eventRows,
+    areaRows,
+    profileRows,
+    areaServiceRows,
+    tourismRows,
+    gastronomyRows,
+  }
 }
