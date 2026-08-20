@@ -2,6 +2,7 @@ import {
   createFdcStallApplicationRow,
   deleteFdcStallApplicationRow,
   findFdcStallApplicationById,
+  findFdcStallDuplicateByContact,
   getFdcPageContentRow,
   listFdcStallApplications,
   updateFdcStallApplicationEmailMeta,
@@ -321,26 +322,78 @@ async function sendConfirmationEmail(application) {
   }
 }
 
-function queueConfirmationEmail(application) {
-  // No bloquear la respuesta HTTP: SMTP (Gmail) en Railway puede demorar o colgarse.
-  setImmediate(() => {
-    void sendConfirmationEmail(application).catch((err) => {
-      console.error('[fdc] confirmation email failed:', err?.message || err)
-    })
-  })
+function withTimeout(promise, ms, timeoutMessage) {
+  let timer
+  return Promise.race([
+    promise.finally(() => clearTimeout(timer)),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(timeoutMessage)), ms)
+    }),
+  ])
 }
 
 export async function createFdcStallApplication(payload) {
   const page = await getFdcPageContentRow()
   assertFormWindowOpen(page)
   const data = sanitizeApplicationPayload(payload)
+
+  const duplicate = await findFdcStallDuplicateByContact({
+    email: data.email,
+    phone: data.phone,
+  })
+  if (duplicate?.field === 'email') {
+    throw new AppError(
+      `Ya se registró una preinscripción con este correo electrónico (solicitud N° ${duplicate.application.id}). Si necesitás corregir datos, comunicate con la municipalidad.`,
+      409,
+    )
+  }
+  if (duplicate?.field === 'phone') {
+    throw new AppError(
+      `Ya se registró una preinscripción con este número de teléfono (solicitud N° ${duplicate.application.id}). Si necesitás corregir datos, comunicate con la municipalidad.`,
+      409,
+    )
+  }
+
   const created = await createFdcStallApplicationRow(data)
-  const emailQueued = isMailConfigured()
-  queueConfirmationEmail(created)
+
+  // Intentamos enviar ahora (con tope de tiempo). Si falla, la solicitud igual queda guardada.
+  let emailSent = false
+  let emailError = ''
+  if (isMailConfigured()) {
+    try {
+      const mailResult = await withTimeout(
+        sendConfirmationEmail(created),
+        22_000,
+        'Timeout al conectar con Gmail (SMTP). Revisá MAIL_PORT=465 y MAIL_SECURE=true en Railway.',
+      )
+      emailSent = Boolean(mailResult?.sent)
+      if (!emailSent) emailError = mailResult?.reason || 'No se pudo enviar el correo.'
+    } catch (e) {
+      emailError = e?.message || 'No se pudo enviar el correo.'
+      console.error('[fdc] email timeout/error:', emailError)
+      await updateFdcStallApplicationEmailMeta(created.id, {
+        emailSentAt: null,
+        emailError,
+      }).catch(() => {})
+      // Reintento en segundo plano por si fue solo lentitud.
+      setImmediate(() => {
+        void sendConfirmationEmail(created).catch(() => {})
+      })
+    }
+  } else {
+    emailError = 'Correo no configurado en el servidor (MAIL_USER / MAIL_PASS).'
+    await updateFdcStallApplicationEmailMeta(created.id, {
+      emailSentAt: null,
+      emailError,
+    }).catch(() => {})
+  }
+
+  const fresh = (await findFdcStallApplicationById(created.id)) || created
   return {
-    application: created,
-    emailSent: false,
-    emailQueued,
+    application: fresh,
+    emailSent,
+    emailQueued: !emailSent && isMailConfigured(),
+    emailError: emailSent ? '' : emailError,
   }
 }
 

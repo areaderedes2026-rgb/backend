@@ -1,5 +1,17 @@
 import { pool } from '../config/db.js'
 
+/** Clave comparable de teléfono AR (últimos 10 dígitos). */
+export function normalizePhoneKey(phone) {
+  let d = String(phone ?? '').replace(/\D/g, '')
+  if (!d) return ''
+  d = d.replace(/^0+/, '')
+  if (d.startsWith('549') && d.length >= 12) d = d.slice(3)
+  else if (d.startsWith('54') && d.length >= 11) d = d.slice(2)
+  if (d.length === 11 && d.startsWith('9')) d = d.slice(1)
+  if (d.length > 10) d = d.slice(-10)
+  return d
+}
+
 function parseJsonSafe(value, fallback) {
   if (value == null) return fallback
   if (typeof value === 'object') return value
@@ -238,6 +250,44 @@ export async function findFdcStallApplicationById(id) {
   return mapApplicationRow(rows[0] ?? null)
 }
 
+/**
+ * Busca preinscripción previa por email o teléfono (evita duplicados).
+ * @returns {{ field: 'email' | 'phone', application: object } | null}
+ */
+export async function findFdcStallDuplicateByContact({ email, phone }) {
+  const emailNorm = String(email || '').trim().toLowerCase()
+  if (emailNorm) {
+    const [byEmail] = await pool.query(
+      `SELECT * FROM fdc_stall_applications
+       WHERE LOWER(TRIM(email)) = ?
+       ORDER BY id ASC
+       LIMIT 1`,
+      [emailNorm],
+    )
+    if (byEmail[0]) {
+      return { field: 'email', application: mapApplicationRow(byEmail[0]) }
+    }
+  }
+
+  const phoneKey = normalizePhoneKey(phone)
+  if (phoneKey && phoneKey.length >= 8) {
+    const [rows] = await pool.query(
+      `SELECT id, phone FROM fdc_stall_applications
+       WHERE phone IS NOT NULL AND TRIM(phone) != ''
+       ORDER BY id ASC
+       LIMIT 2000`,
+    )
+    for (const row of rows) {
+      if (normalizePhoneKey(row.phone) === phoneKey) {
+        const full = await findFdcStallApplicationById(row.id)
+        if (full) return { field: 'phone', application: full }
+      }
+    }
+  }
+
+  return null
+}
+
 export async function listFdcStallApplications({ status = '' } = {}) {
   const value = String(status || '').trim().toLowerCase()
   const params = []
@@ -276,9 +326,20 @@ export async function updateFdcStallApplicationEmailMeta(id, { emailSentAt = nul
 }
 
 export async function deleteFdcStallApplicationRow(id) {
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) return false
+
   const [result] = await pool.query(
     'DELETE FROM fdc_stall_applications WHERE id = ? LIMIT 1',
-    [id],
+    [numericId],
   )
-  return result.affectedRows > 0
+  if (!result.affectedRows) return false
+
+  // Liberar el correlativo: el próximo INSERT usa MAX(id)+1 (ej. borré #4 → próxima es #4).
+  const [rows] = await pool.query(
+    'SELECT COALESCE(MAX(id), 0) AS maxId FROM fdc_stall_applications',
+  )
+  const nextId = Math.max(1, Math.floor(Number(rows[0]?.maxId || 0) + 1))
+  await pool.query(`ALTER TABLE fdc_stall_applications AUTO_INCREMENT = ${nextId}`)
+  return true
 }

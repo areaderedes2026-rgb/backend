@@ -5,18 +5,23 @@ function env(name, fallback = '') {
   return String(process.env[name] ?? fallback).trim()
 }
 
+/** Quita espacios (Google muestra la clave en grupos de 4). */
+function cleanAppPassword(value) {
+  return String(value || '').replace(/\s+/g, '')
+}
+
 export function isMailConfigured() {
   const user = env('MAIL_USER') || env('MAIL_FROM')
-  const pass = env('MAIL_PASS') || env('MAIL_APP_PASSWORD')
+  const pass = cleanAppPassword(env('MAIL_PASS') || env('MAIL_APP_PASSWORD'))
   return Boolean(user && pass)
 }
 
 function getMailConfig() {
   const user = env('MAIL_USER') || env('MAIL_FROM') || 'areaderedes2026@gmail.com'
-  const pass = env('MAIL_PASS') || env('MAIL_APP_PASSWORD')
+  const pass = cleanAppPassword(env('MAIL_PASS') || env('MAIL_APP_PASSWORD'))
   const fromName = env('MAIL_FROM_NAME', 'Municipalidad de Trancas')
   const fromAddress = env('MAIL_FROM') || user
-  const port = Number(env('MAIL_PORT', '587')) || 587
+  const port = Number(env('MAIL_PORT', '465')) || 465
   const secureEnv = env('MAIL_SECURE', '')
   const secure =
     secureEnv === 'true' ? true : secureEnv === 'false' ? false : port === 465
@@ -30,31 +35,37 @@ function getMailConfig() {
   }
 }
 
-let cachedTransporter = null
-
-function getTransporter() {
-  if (!isMailConfigured()) {
-    throw new AppError(
-      'El envío de correo no está configurado. Definí MAIL_USER y MAIL_PASS (contraseña de aplicación de Gmail) en el backend.',
-      503,
-    )
-  }
-  if (cachedTransporter) return cachedTransporter
-  const cfg = getMailConfig()
-  cachedTransporter = nodemailer.createTransport({
-    host: cfg.host,
-    port: cfg.port,
-    secure: cfg.secure,
-    // Evita que Railway/SMTP dejen colgada la request por minutos.
+function buildTransport({ host, port, secure, user, pass }) {
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    requireTLS: !secure && port === 587,
     connectionTimeout: 12_000,
     greetingTimeout: 12_000,
     socketTimeout: 20_000,
-    auth: {
-      user: cfg.user,
-      pass: cfg.pass,
+    auth: { user, pass },
+    tls: {
+      minVersion: 'TLSv1.2',
     },
   })
-  return cachedTransporter
+}
+
+function attemptList(cfg) {
+  const primary = { host: cfg.host, port: cfg.port, secure: cfg.secure }
+  const fallbacks = [
+    { host: 'smtp.gmail.com', port: 465, secure: true },
+    { host: 'smtp.gmail.com', port: 587, secure: false },
+  ]
+  const seen = new Set()
+  const out = []
+  for (const a of [primary, ...fallbacks]) {
+    const key = `${a.host}:${a.port}:${a.secure ? 1 : 0}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(a)
+  }
+  return out
 }
 
 /**
@@ -65,25 +76,54 @@ export async function sendMail({ to, subject, text, html }) {
   if (!recipient) {
     throw new AppError('No hay destinatario de correo.', 400)
   }
-  const cfg = getMailConfig()
-  const transporter = getTransporter()
-  try {
-    const info = await transporter.sendMail({
-      from: cfg.from,
-      to: recipient,
-      subject: String(subject || '').trim() || 'Municipalidad de Trancas',
-      text: String(text || '').trim(),
-      html: html ? String(html) : undefined,
-    })
-    return {
-      messageId: info?.messageId || null,
-      accepted: Array.isArray(info?.accepted) ? info.accepted : [],
-    }
-  } catch (err) {
-    // Forzar recreación del transporter ante fallos de auth/red.
-    cachedTransporter = null
-    throw err
+  if (!isMailConfigured()) {
+    throw new AppError(
+      'El envío de correo no está configurado. Definí MAIL_USER y MAIL_PASS en el backend.',
+      503,
+    )
   }
+
+  const cfg = getMailConfig()
+  const payload = {
+    from: cfg.from,
+    to: recipient,
+    subject: String(subject || '').trim() || 'Municipalidad de Trancas',
+    text: String(text || '').trim(),
+    html: html ? String(html) : undefined,
+  }
+
+  const errors = []
+  for (const attempt of attemptList(cfg)) {
+    const label = `${attempt.host}:${attempt.port}/${attempt.secure ? 'ssl' : 'starttls'}`
+    try {
+      const transporter = buildTransport({
+        ...attempt,
+        user: cfg.user,
+        pass: cfg.pass,
+      })
+      const info = await transporter.sendMail(payload)
+      try {
+        transporter.close()
+      } catch {
+        /* ignore */
+      }
+      console.info(`[mail] enviado OK vía ${label} → ${recipient}`)
+      return {
+        messageId: info?.messageId || null,
+        accepted: Array.isArray(info?.accepted) ? info.accepted : [],
+        via: label,
+      }
+    } catch (err) {
+      const msg = err?.message || String(err)
+      console.error(`[mail] falló ${label}:`, msg)
+      errors.push(`${label}: ${msg}`)
+    }
+  }
+
+  throw new AppError(
+    `No se pudo enviar el correo. ${errors.slice(0, 2).join(' | ') || 'Error SMTP'}`,
+    503,
+  )
 }
 
 export function escapeHtml(value) {
