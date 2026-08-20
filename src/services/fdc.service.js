@@ -186,8 +186,6 @@ function sanitizeApplicationPayload(payload) {
   const rubroOther = cleanString(payload?.rubroOther, 180)
   const participatedBefore = Boolean(payload?.participatedBefore)
   const participationYears = cleanString(payload?.participationYears, 120)
-  const dniCopyAck = Boolean(payload?.dniCopyAck)
-  const acceptedNotice = Boolean(payload?.acceptedNotice)
 
   if (!fullName) throw new AppError('El apellido y nombre son obligatorios.', 400)
   if (!dni || dni.length < 7 || dni.length > 10) {
@@ -207,17 +205,8 @@ function sanitizeApplicationPayload(payload) {
   if (rubro === 'Otro' && !rubroOther) {
     throw new AppError('Indicá el rubro en «Otro».', 400)
   }
-  if (rubro !== 'Otro') {
-    // keep rubroOther empty when not needed
-  }
   if (participatedBefore && !participationYears) {
     throw new AppError('Indicá el/los año/s de participación anterior.', 400)
-  }
-  if (!dniCopyAck) {
-    throw new AppError('Debés confirmar que presentarás fotocopia de DNI.', 400)
-  }
-  if (!acceptedNotice) {
-    throw new AppError('Debés aceptar el aviso de preinscripción para continuar.', 400)
   }
 
   return {
@@ -231,8 +220,9 @@ function sanitizeApplicationPayload(payload) {
     rubroOther: rubro === 'Otro' ? rubroOther : '',
     participatedBefore,
     participationYears: participatedBefore ? participationYears : '',
-    dniCopyAck,
-    acceptedNotice,
+    // Documentación / aviso: solo informativos en el front; se registran como leídos.
+    dniCopyAck: true,
+    acceptedNotice: true,
     status: 'sin_resolver',
   }
 }

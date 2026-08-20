@@ -66,8 +66,6 @@ router.post(
     body('rubroOther').optional({ checkFalsy: true }).trim().isLength({ max: 180 }),
     body('participatedBefore').optional().isBoolean(),
     body('participationYears').optional({ checkFalsy: true }).trim().isLength({ max: 120 }),
-    body('dniCopyAck').isBoolean().custom((v) => v === true),
-    body('acceptedNotice').isBoolean().custom((v) => v === true),
     validate,
   ],
   postFdcStallApplicationCtrl,
