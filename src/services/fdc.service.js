@@ -294,8 +294,7 @@ async function sendConfirmationEmail(application) {
   if (!isMailConfigured()) {
     await updateFdcStallApplicationEmailMeta(application.id, {
       emailSentAt: null,
-      emailError:
-        'Correo no configurado. En Railway usá MAIL_APPSCRIPT_URL (Google Apps Script, gratis).',
+      emailError: 'Correo no configurado en el servidor (MAIL_USER / MAIL_PASS).',
     })
     return { sent: false, reason: 'not_configured' }
   }
@@ -324,7 +323,7 @@ async function sendConfirmationEmail(application) {
 }
 
 function queueConfirmationEmail(application) {
-  // Nunca bloquear el POST del formulario (SMTP en Railway cuelga 20–40s).
+  // Nunca bloquear la respuesta HTTP con SMTP (Gmail puede tardar 10–20s).
   setImmediate(() => {
     void sendConfirmationEmail(application).catch((err) => {
       console.error('[fdc] confirmation email failed:', err?.message || err)
@@ -362,9 +361,7 @@ export async function createFdcStallApplication(payload) {
     application: created,
     emailSent: false,
     emailQueued,
-    emailError: emailQueued
-      ? ''
-      : 'Correo no configurado. En Railway usá MAIL_APPSCRIPT_URL (gratis).',
+    emailError: '',
   }
 }
 

@@ -271,16 +271,19 @@ export async function findFdcStallDuplicateByContact({ email, phone }) {
 
   const phoneKey = normalizePhoneKey(phone)
   if (phoneKey && phoneKey.length >= 8) {
+    // Prefiltro SQL por últimos dígitos; la comparación exacta se hace con normalizePhoneKey.
     const [rows] = await pool.query(
-      `SELECT id, phone FROM fdc_stall_applications
-       WHERE phone IS NOT NULL AND TRIM(phone) != ''
+      `SELECT * FROM fdc_stall_applications
+       WHERE phone IS NOT NULL
+         AND TRIM(phone) != ''
+         AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), '(', ''), ')', '') LIKE ?
        ORDER BY id ASC
-       LIMIT 2000`,
+       LIMIT 40`,
+      [`%${phoneKey}`],
     )
     for (const row of rows) {
       if (normalizePhoneKey(row.phone) === phoneKey) {
-        const full = await findFdcStallApplicationById(row.id)
-        if (full) return { field: 'phone', application: full }
+        return { field: 'phone', application: mapApplicationRow(row) }
       }
     }
   }
