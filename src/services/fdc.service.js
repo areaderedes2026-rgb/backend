@@ -294,7 +294,7 @@ async function sendConfirmationEmail(application) {
   if (!isMailConfigured()) {
     await updateFdcStallApplicationEmailMeta(application.id, {
       emailSentAt: null,
-      emailError: 'Correo no configurado en el servidor (MAIL_USER / MAIL_PASS).',
+      emailError: 'Correo no configurado en el servidor (BREVO_API_KEY o MAIL_USER/MAIL_PASS).',
     })
     return { sent: false, reason: 'not_configured' }
   }

@@ -10,17 +10,36 @@ function cleanAppPassword(value) {
   return String(value || '').replace(/\s+/g, '')
 }
 
-export function isMailConfigured() {
+function getFromIdentity() {
+  const fromName = env('MAIL_FROM_NAME', 'Municipalidad de Trancas')
+  const fromAddress =
+    env('MAIL_FROM') || env('MAIL_USER') || 'areaderedes2026@gmail.com'
+  return { fromName, fromAddress }
+}
+
+function isSmtpConfigured() {
   const user = env('MAIL_USER') || env('MAIL_FROM')
   const pass = cleanAppPassword(env('MAIL_PASS') || env('MAIL_APP_PASSWORD'))
   return Boolean(user && pass)
 }
 
-function getMailConfig() {
+function isBrevoConfigured() {
+  return Boolean(env('BREVO_API_KEY') || env('SENDINBLUE_API_KEY'))
+}
+
+function isResendConfigured() {
+  return Boolean(env('RESEND_API_KEY'))
+}
+
+/** Hay al menos un proveedor de correo listo (API HTTPS o SMTP). */
+export function isMailConfigured() {
+  return isBrevoConfigured() || isResendConfigured() || isSmtpConfigured()
+}
+
+function getSmtpConfig() {
   const user = env('MAIL_USER') || env('MAIL_FROM') || 'areaderedes2026@gmail.com'
   const pass = cleanAppPassword(env('MAIL_PASS') || env('MAIL_APP_PASSWORD'))
-  const fromName = env('MAIL_FROM_NAME', 'Municipalidad de Trancas')
-  const fromAddress = env('MAIL_FROM') || user
+  const { fromName, fromAddress } = getFromIdentity()
   const port = Number(env('MAIL_PORT', '465')) || 465
   const secureEnv = env('MAIL_SECURE', '')
   const secure =
@@ -32,6 +51,8 @@ function getMailConfig() {
     user,
     pass,
     from: `"${fromName}" <${fromAddress}>`,
+    fromName,
+    fromAddress,
   }
 }
 
@@ -41,17 +62,15 @@ function buildTransport({ host, port, secure, user, pass }) {
     port,
     secure,
     requireTLS: !secure && port === 587,
-    connectionTimeout: 12_000,
-    greetingTimeout: 12_000,
-    socketTimeout: 20_000,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
     auth: { user, pass },
-    tls: {
-      minVersion: 'TLSv1.2',
-    },
+    tls: { minVersion: 'TLSv1.2' },
   })
 }
 
-function attemptList(cfg) {
+function smtpAttemptList(cfg) {
   const primary = { host: cfg.host, port: cfg.port, secure: cfg.secure }
   const fallbacks = [
     { host: 'smtp.gmail.com', port: 465, secure: true },
@@ -68,32 +87,96 @@ function attemptList(cfg) {
   return out
 }
 
-/**
- * @param {{ to: string, subject: string, text: string, html?: string }} options
- */
-export async function sendMail({ to, subject, text, html }) {
-  const recipient = String(to || '').trim()
-  if (!recipient) {
-    throw new AppError('No hay destinatario de correo.', 400)
+async function sendViaBrevo({ to, subject, text, html }) {
+  const apiKey = env('BREVO_API_KEY') || env('SENDINBLUE_API_KEY')
+  const { fromName, fromAddress } = getFromIdentity()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20_000)
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json',
+        'api-key': apiKey,
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromAddress },
+        to: [{ email: to }],
+        subject,
+        textContent: text || undefined,
+        htmlContent: html || undefined,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const detail =
+        data?.message ||
+        data?.error ||
+        (Array.isArray(data?.code) ? data.code.join(', ') : '') ||
+        `HTTP ${res.status}`
+      throw new Error(String(detail))
+    }
+    console.info(`[mail] enviado OK vía Brevo API → ${to}`)
+    return {
+      messageId: data?.messageId ? String(data.messageId) : null,
+      accepted: [to],
+      via: 'brevo-api',
+    }
+  } finally {
+    clearTimeout(timer)
   }
-  if (!isMailConfigured()) {
-    throw new AppError(
-      'El envío de correo no está configurado. Definí MAIL_USER y MAIL_PASS en el backend.',
-      503,
-    )
-  }
+}
 
-  const cfg = getMailConfig()
+async function sendViaResend({ to, subject, text, html }) {
+  const apiKey = env('RESEND_API_KEY')
+  const { fromName, fromAddress } = getFromIdentity()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20_000)
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${fromAddress}>`,
+        to: [to],
+        subject,
+        text: text || undefined,
+        html: html || undefined,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const detail = data?.message || data?.error || `HTTP ${res.status}`
+      throw new Error(String(detail))
+    }
+    console.info(`[mail] enviado OK vía Resend API → ${to}`)
+    return {
+      messageId: data?.id ? String(data.id) : null,
+      accepted: [to],
+      via: 'resend-api',
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function sendViaSmtp({ to, subject, text, html }) {
+  const cfg = getSmtpConfig()
   const payload = {
     from: cfg.from,
-    to: recipient,
-    subject: String(subject || '').trim() || 'Municipalidad de Trancas',
-    text: String(text || '').trim(),
-    html: html ? String(html) : undefined,
+    to,
+    subject,
+    text,
+    html: html || undefined,
   }
-
   const errors = []
-  for (const attempt of attemptList(cfg)) {
+  for (const attempt of smtpAttemptList(cfg)) {
     const label = `${attempt.host}:${attempt.port}/${attempt.secure ? 'ssl' : 'starttls'}`
     try {
       const transporter = buildTransport({
@@ -107,7 +190,7 @@ export async function sendMail({ to, subject, text, html }) {
       } catch {
         /* ignore */
       }
-      console.info(`[mail] enviado OK vía ${label} → ${recipient}`)
+      console.info(`[mail] enviado OK vía ${label} → ${to}`)
       return {
         messageId: info?.messageId || null,
         accepted: Array.isArray(info?.accepted) ? info.accepted : [],
@@ -119,9 +202,72 @@ export async function sendMail({ to, subject, text, html }) {
       errors.push(`${label}: ${msg}`)
     }
   }
+  throw new Error(errors.slice(0, 2).join(' | ') || 'Error SMTP')
+}
+
+/**
+ * Envía correo. En Railway prioriza API HTTPS (Brevo/Resend): SMTP de Gmail suele estar bloqueado.
+ * @param {{ to: string, subject: string, text: string, html?: string }} options
+ */
+export async function sendMail({ to, subject, text, html }) {
+  const recipient = String(to || '').trim()
+  if (!recipient) {
+    throw new AppError('No hay destinatario de correo.', 400)
+  }
+  if (!isMailConfigured()) {
+    throw new AppError(
+      'El envío de correo no está configurado. Definí BREVO_API_KEY (recomendado en Railway) o MAIL_USER/MAIL_PASS.',
+      503,
+    )
+  }
+
+  const subjectSafe = String(subject || '').trim() || 'Municipalidad de Trancas'
+  const textSafe = String(text || '').trim()
+  const htmlSafe = html ? String(html) : undefined
+  const payload = {
+    to: recipient,
+    subject: subjectSafe,
+    text: textSafe,
+    html: htmlSafe,
+  }
+
+  const errors = []
+
+  // 1) Brevo (HTTPS) — funciona en Railway, plan gratis, remitente Gmail verificable.
+  if (isBrevoConfigured()) {
+    try {
+      return await sendViaBrevo(payload)
+    } catch (err) {
+      const msg = err?.name === 'AbortError' ? 'Timeout Brevo API' : err?.message || String(err)
+      console.error('[mail] Brevo falló:', msg)
+      errors.push(`brevo: ${msg}`)
+    }
+  }
+
+  // 2) Resend (HTTPS) — alternativa; requiere dominio verificado para producción.
+  if (isResendConfigured()) {
+    try {
+      return await sendViaResend(payload)
+    } catch (err) {
+      const msg = err?.name === 'AbortError' ? 'Timeout Resend API' : err?.message || String(err)
+      console.error('[mail] Resend falló:', msg)
+      errors.push(`resend: ${msg}`)
+    }
+  }
+
+  // 3) SMTP (útil en local; en Railway Gmail suele dar Connection timeout).
+  if (isSmtpConfigured()) {
+    try {
+      return await sendViaSmtp(payload)
+    } catch (err) {
+      const msg = err?.message || String(err)
+      console.error('[mail] SMTP falló:', msg)
+      errors.push(`smtp: ${msg}`)
+    }
+  }
 
   throw new AppError(
-    `No se pudo enviar el correo. ${errors.slice(0, 2).join(' | ') || 'Error SMTP'}`,
+    `No se pudo enviar el correo. ${errors.slice(0, 2).join(' | ') || 'Sin proveedor disponible'}`,
     503,
   )
 }
