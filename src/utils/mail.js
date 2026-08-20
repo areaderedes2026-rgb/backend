@@ -5,18 +5,11 @@ function env(name, fallback = '') {
   return String(process.env[name] ?? fallback).trim()
 }
 
-/** Quita espacios (Google muestra la clave en grupos de 4). */
 function cleanAppPassword(value) {
   return String(value || '').replace(/\s+/g, '')
 }
 
-export function isMailConfigured() {
-  const user = env('MAIL_USER') || env('MAIL_FROM')
-  const pass = cleanAppPassword(env('MAIL_PASS') || env('MAIL_APP_PASSWORD'))
-  return Boolean(user && pass)
-}
-
-function getMailConfig() {
+function getSmtpConfig() {
   const user = env('MAIL_USER') || env('MAIL_FROM') || 'areaderedes2026@gmail.com'
   const pass = cleanAppPassword(env('MAIL_PASS') || env('MAIL_APP_PASSWORD'))
   const fromName = env('MAIL_FROM_NAME', 'Municipalidad de Trancas')
@@ -31,8 +24,118 @@ function getMailConfig() {
     secure,
     user,
     pass,
+    fromName,
+    fromAddress,
     from: `"${fromName}" <${fromAddress}>`,
   }
+}
+
+function appscriptUrl() {
+  return env('MAIL_APPSCRIPT_URL') || env('GMAIL_APPSCRIPT_URL')
+}
+
+function resendApiKey() {
+  return env('RESEND_API_KEY')
+}
+
+/**
+ * Railway bloquea SMTP (465/587) → Connection timeout.
+ * En producción usamos HTTPS (Google Apps Script o Resend), gratis.
+ */
+export function getMailTransport() {
+  const forced = env('MAIL_TRANSPORT', 'auto').toLowerCase()
+  if (forced === 'appscript' || forced === 'resend' || forced === 'smtp') return forced
+  if (appscriptUrl()) return 'appscript'
+  if (resendApiKey()) return 'resend'
+  if (getSmtpConfig().pass) return 'smtp'
+  return 'none'
+}
+
+export function isMailConfigured() {
+  const t = getMailTransport()
+  if (t === 'appscript') return Boolean(appscriptUrl())
+  if (t === 'resend') return Boolean(resendApiKey())
+  if (t === 'smtp') {
+    const cfg = getSmtpConfig()
+    return Boolean(cfg.user && cfg.pass)
+  }
+  return false
+}
+
+async function sendViaAppsScript({ to, subject, text, html }) {
+  const url = appscriptUrl()
+  if (!url) throw new AppError('Falta MAIL_APPSCRIPT_URL.', 503)
+
+  const secret = env('MAIL_APPSCRIPT_SECRET') || env('GMAIL_APPSCRIPT_SECRET')
+  const cfg = getSmtpConfig()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 20_000)
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: secret || undefined,
+        to,
+        subject,
+        text,
+        html: html || undefined,
+        fromName: cfg.fromName,
+      }),
+      signal: controller.signal,
+      redirect: 'follow',
+    })
+    const raw = await res.text()
+    let data = {}
+    try {
+      data = raw ? JSON.parse(raw) : {}
+    } catch {
+      data = { raw }
+    }
+    if (!res.ok || data.ok === false) {
+      throw new Error(
+        data.error || data.message || raw?.slice(0, 200) || `HTTP ${res.status}`,
+      )
+    }
+    console.info(`[mail] enviado OK vía Google Apps Script → ${to}`)
+    return { messageId: data.messageId || null, accepted: [to], via: 'appscript' }
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Timeout al llamar Google Apps Script.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function sendViaResend({ to, subject, text, html }) {
+  const key = resendApiKey()
+  if (!key) throw new AppError('Falta RESEND_API_KEY.', 503)
+  const cfg = getSmtpConfig()
+  const from = env('RESEND_FROM') || `${cfg.fromName} <${cfg.fromAddress}>`
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      text,
+      html: html || undefined,
+    }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(data?.message || data?.error || `Resend HTTP ${res.status}`)
+  }
+  console.info(`[mail] enviado OK vía Resend → ${to}`)
+  return { messageId: data?.id || null, accepted: [to], via: 'resend' }
 }
 
 function buildTransport({ host, port, secure, user, pass }) {
@@ -41,73 +144,49 @@ function buildTransport({ host, port, secure, user, pass }) {
     port,
     secure,
     requireTLS: !secure && port === 587,
-    connectionTimeout: 12_000,
-    greetingTimeout: 12_000,
-    socketTimeout: 20_000,
+    // Timeouts cortos: en Railway SMTP nunca conecta y no debe demorar el formulario.
+    connectionTimeout: 4_000,
+    greetingTimeout: 4_000,
+    socketTimeout: 8_000,
     auth: { user, pass },
-    tls: {
-      minVersion: 'TLSv1.2',
-    },
+    tls: { minVersion: 'TLSv1.2' },
   })
 }
 
-function attemptList(cfg) {
-  const primary = { host: cfg.host, port: cfg.port, secure: cfg.secure }
-  const fallbacks = [
+async function sendViaSmtp({ to, subject, text, html }) {
+  const cfg = getSmtpConfig()
+  if (!cfg.user || !cfg.pass) {
+    throw new AppError('Faltan MAIL_USER / MAIL_PASS para SMTP.', 503)
+  }
+
+  const attempts = [
+    { host: cfg.host, port: cfg.port, secure: cfg.secure },
     { host: 'smtp.gmail.com', port: 465, secure: true },
     { host: 'smtp.gmail.com', port: 587, secure: false },
   ]
   const seen = new Set()
-  const out = []
-  for (const a of [primary, ...fallbacks]) {
-    const key = `${a.host}:${a.port}:${a.secure ? 1 : 0}`
+  const errors = []
+
+  for (const attempt of attempts) {
+    const key = `${attempt.host}:${attempt.port}:${attempt.secure ? 1 : 0}`
     if (seen.has(key)) continue
     seen.add(key)
-    out.push(a)
-  }
-  return out
-}
-
-/**
- * @param {{ to: string, subject: string, text: string, html?: string }} options
- */
-export async function sendMail({ to, subject, text, html }) {
-  const recipient = String(to || '').trim()
-  if (!recipient) {
-    throw new AppError('No hay destinatario de correo.', 400)
-  }
-  if (!isMailConfigured()) {
-    throw new AppError(
-      'El envío de correo no está configurado. Definí MAIL_USER y MAIL_PASS en el backend.',
-      503,
-    )
-  }
-
-  const cfg = getMailConfig()
-  const payload = {
-    from: cfg.from,
-    to: recipient,
-    subject: String(subject || '').trim() || 'Municipalidad de Trancas',
-    text: String(text || '').trim(),
-    html: html ? String(html) : undefined,
-  }
-
-  const errors = []
-  for (const attempt of attemptList(cfg)) {
     const label = `${attempt.host}:${attempt.port}/${attempt.secure ? 'ssl' : 'starttls'}`
     try {
-      const transporter = buildTransport({
-        ...attempt,
-        user: cfg.user,
-        pass: cfg.pass,
+      const transporter = buildTransport({ ...attempt, user: cfg.user, pass: cfg.pass })
+      const info = await transporter.sendMail({
+        from: cfg.from,
+        to,
+        subject,
+        text,
+        html: html || undefined,
       })
-      const info = await transporter.sendMail(payload)
       try {
         transporter.close()
       } catch {
         /* ignore */
       }
-      console.info(`[mail] enviado OK vía ${label} → ${recipient}`)
+      console.info(`[mail] enviado OK vía ${label} → ${to}`)
       return {
         messageId: info?.messageId || null,
         accepted: Array.isArray(info?.accepted) ? info.accepted : [],
@@ -120,10 +199,37 @@ export async function sendMail({ to, subject, text, html }) {
     }
   }
 
-  throw new AppError(
-    `No se pudo enviar el correo. ${errors.slice(0, 2).join(' | ') || 'Error SMTP'}`,
-    503,
+  throw new Error(
+    `SMTP bloqueado o inválido. En Railway usá MAIL_APPSCRIPT_URL (gratis). ${errors.slice(0, 2).join(' | ')}`,
   )
+}
+
+/**
+ * @param {{ to: string, subject: string, text: string, html?: string }} options
+ */
+export async function sendMail({ to, subject, text, html }) {
+  const recipient = String(to || '').trim()
+  if (!recipient) {
+    throw new AppError('No hay destinatario de correo.', 400)
+  }
+  if (!isMailConfigured()) {
+    throw new AppError(
+      'Correo no configurado. En Railway definí MAIL_APPSCRIPT_URL (Google Apps Script, gratis). En local podés usar MAIL_PASS (SMTP).',
+      503,
+    )
+  }
+
+  const payload = {
+    to: recipient,
+    subject: String(subject || '').trim() || 'Municipalidad de Trancas',
+    text: String(text || '').trim(),
+    html: html ? String(html) : undefined,
+  }
+
+  const transport = getMailTransport()
+  if (transport === 'appscript') return sendViaAppsScript(payload)
+  if (transport === 'resend') return sendViaResend(payload)
+  return sendViaSmtp(payload)
 }
 
 export function escapeHtml(value) {

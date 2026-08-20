@@ -294,7 +294,8 @@ async function sendConfirmationEmail(application) {
   if (!isMailConfigured()) {
     await updateFdcStallApplicationEmailMeta(application.id, {
       emailSentAt: null,
-      emailError: 'Correo no configurado en el servidor (MAIL_USER / MAIL_PASS).',
+      emailError:
+        'Correo no configurado. En Railway usá MAIL_APPSCRIPT_URL (Google Apps Script, gratis).',
     })
     return { sent: false, reason: 'not_configured' }
   }
@@ -322,14 +323,13 @@ async function sendConfirmationEmail(application) {
   }
 }
 
-function withTimeout(promise, ms, timeoutMessage) {
-  let timer
-  return Promise.race([
-    promise.finally(() => clearTimeout(timer)),
-    new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error(timeoutMessage)), ms)
-    }),
-  ])
+function queueConfirmationEmail(application) {
+  // Nunca bloquear el POST del formulario (SMTP en Railway cuelga 20–40s).
+  setImmediate(() => {
+    void sendConfirmationEmail(application).catch((err) => {
+      console.error('[fdc] confirmation email failed:', err?.message || err)
+    })
+  })
 }
 
 export async function createFdcStallApplication(payload) {
@@ -355,45 +355,16 @@ export async function createFdcStallApplication(payload) {
   }
 
   const created = await createFdcStallApplicationRow(data)
+  const emailQueued = isMailConfigured()
+  queueConfirmationEmail(created)
 
-  // Intentamos enviar ahora (con tope de tiempo). Si falla, la solicitud igual queda guardada.
-  let emailSent = false
-  let emailError = ''
-  if (isMailConfigured()) {
-    try {
-      const mailResult = await withTimeout(
-        sendConfirmationEmail(created),
-        22_000,
-        'Timeout al conectar con Gmail (SMTP). Revisá MAIL_PORT=465 y MAIL_SECURE=true en Railway.',
-      )
-      emailSent = Boolean(mailResult?.sent)
-      if (!emailSent) emailError = mailResult?.reason || 'No se pudo enviar el correo.'
-    } catch (e) {
-      emailError = e?.message || 'No se pudo enviar el correo.'
-      console.error('[fdc] email timeout/error:', emailError)
-      await updateFdcStallApplicationEmailMeta(created.id, {
-        emailSentAt: null,
-        emailError,
-      }).catch(() => {})
-      // Reintento en segundo plano por si fue solo lentitud.
-      setImmediate(() => {
-        void sendConfirmationEmail(created).catch(() => {})
-      })
-    }
-  } else {
-    emailError = 'Correo no configurado en el servidor (MAIL_USER / MAIL_PASS).'
-    await updateFdcStallApplicationEmailMeta(created.id, {
-      emailSentAt: null,
-      emailError,
-    }).catch(() => {})
-  }
-
-  const fresh = (await findFdcStallApplicationById(created.id)) || created
   return {
-    application: fresh,
-    emailSent,
-    emailQueued: !emailSent && isMailConfigured(),
-    emailError: emailSent ? '' : emailError,
+    application: created,
+    emailSent: false,
+    emailQueued,
+    emailError: emailQueued
+      ? ''
+      : 'Correo no configurado. En Railway usá MAIL_APPSCRIPT_URL (gratis).',
   }
 }
 
