@@ -19,6 +19,7 @@ import legisladorEsteRoutes from './routes/legisladorEste.routes.js'
 import concejoDeliberanteRoutes from './routes/concejoDeliberante.routes.js'
 import ofertaAcademicaRoutes from './routes/ofertaAcademica.routes.js'
 import gastronomicCatalogRoutes from './routes/gastronomicCatalog.routes.js'
+import fdcRoutes from './routes/fdc.routes.js'
 import eventRoutes from './routes/event.routes.js'
 import searchRoutes from './routes/search.routes.js'
 import sitePageBannerRoutes from './routes/sitePageBanner.routes.js'
@@ -73,6 +74,7 @@ app.use('/api/legislador-este', legisladorEsteRoutes)
 app.use('/api/concejo-deliberante', concejoDeliberanteRoutes)
 app.use('/api/oferta-academica', ofertaAcademicaRoutes)
 app.use('/api/catalogo-gastronomico', gastronomicCatalogRoutes)
+app.use('/api/fdc', fdcRoutes)
 app.use('/api/site-page-banners', sitePageBannerRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/news', newsRoutes)
