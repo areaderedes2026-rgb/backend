@@ -76,6 +76,194 @@ function sanitizeHighlights(input) {
   return out
 }
 
+function newItemId(prefix) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function sanitizeSectionNav(input) {
+  const raw = Array.isArray(input) ? input : []
+  const out = []
+  for (const item of raw.slice(0, 12)) {
+    const label = cleanString(item?.label, 80)
+    const href = cleanString(item?.href, 240)
+    if (!label && !href) continue
+    out.push({
+      id: cleanString(item?.id, 64) || newItemId('nav'),
+      label,
+      href,
+      icon: cleanString(item?.icon, 40) || 'link',
+    })
+  }
+  return out
+}
+
+function sanitizeSchedule(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const daysIn = Array.isArray(src.days) ? src.days : []
+  const days = []
+  for (const day of daysIn.slice(0, 14)) {
+    const label = cleanString(day?.label, 80)
+    const itemsIn = Array.isArray(day?.items) ? day.items : []
+    const items = []
+    for (const it of itemsIn.slice(0, 40)) {
+      const time = cleanString(it?.time, 40)
+      const text = cleanString(it?.text, 400)
+      if (!time && !text) continue
+      items.push({
+        id: cleanString(it?.id, 64) || newItemId('sch'),
+        time,
+        text,
+      })
+    }
+    if (!label && items.length === 0) continue
+    days.push({
+      id: cleanString(day?.id, 64) || newItemId('day'),
+      label: label || 'Día',
+      items,
+    })
+  }
+  return {
+    title: cleanString(src.title, 180) || 'Cronograma de actividades',
+    featuredImageUrl: cleanString(src.featuredImageUrl, 2048),
+    ctaLabel: cleanString(src.ctaLabel, 80),
+    ctaHref: cleanString(src.ctaHref, 240),
+    days,
+  }
+}
+
+function sanitizeArtists(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const itemsIn = Array.isArray(src.items) ? src.items : Array.isArray(input) ? input : []
+  const items = []
+  for (const it of itemsIn.slice(0, 40)) {
+    const name = cleanString(it?.name, 160)
+    if (!name) continue
+    items.push({
+      id: cleanString(it?.id, 64) || newItemId('art'),
+      name,
+      photoUrl: cleanString(it?.photoUrl, 2048),
+      dateTag: cleanString(it?.dateTag, 40),
+      sortOrder: Number.isFinite(Number(it?.sortOrder)) ? Number(it.sortOrder) : items.length,
+    })
+  }
+  items.sort((a, b) => a.sortOrder - b.sortOrder)
+  return {
+    title: cleanString(src.title, 180) || 'Cartelera artística',
+    ctaLabel: cleanString(src.ctaLabel, 80),
+    ctaHref: cleanString(src.ctaHref, 240),
+    items,
+  }
+}
+
+function sanitizeTickets(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const bulletsIn = Array.isArray(src.bullets) ? src.bullets : []
+  const bullets = []
+  for (const b of bulletsIn.slice(0, 10)) {
+    const s = cleanString(b, 200)
+    if (s) bullets.push(s)
+  }
+  return {
+    title: cleanString(src.title, 180) || 'Entradas online',
+    body: cleanMultiline(src.body, 1200),
+    bullets,
+    ctaLabel: cleanString(src.ctaLabel, 80) || 'Comprar entradas',
+    ctaUrl: cleanString(src.ctaUrl, 2048),
+    imageUrl: cleanString(src.imageUrl, 2048),
+  }
+}
+
+function sanitizeNews(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const itemsIn = Array.isArray(src.items) ? src.items : Array.isArray(input) ? input : []
+  const items = []
+  for (const it of itemsIn.slice(0, 24)) {
+    const title = cleanString(it?.title, 220)
+    if (!title) continue
+    items.push({
+      id: cleanString(it?.id, 64) || newItemId('news'),
+      title,
+      date: cleanString(it?.date, 40),
+      imageUrl: cleanString(it?.imageUrl, 2048),
+      link: cleanString(it?.link, 2048),
+      excerpt: cleanString(it?.excerpt, 400),
+    })
+  }
+  return {
+    title: cleanString(src.title, 180) || 'Noticias del festival',
+    ctaLabel: cleanString(src.ctaLabel, 80),
+    ctaHref: cleanString(src.ctaHref, 240),
+    items,
+  }
+}
+
+function sanitizeGallery(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const itemsIn = Array.isArray(src.items) ? src.items : Array.isArray(input) ? input : []
+  const items = []
+  for (const it of itemsIn.slice(0, 30)) {
+    if (typeof it === 'string') {
+      const url = cleanString(it, 2048)
+      if (url) items.push({ id: newItemId('gal'), imageUrl: url, caption: '' })
+      continue
+    }
+    const imageUrl = cleanString(it?.imageUrl, 2048)
+    if (!imageUrl) continue
+    items.push({
+      id: cleanString(it?.id, 64) || newItemId('gal'),
+      imageUrl,
+      caption: cleanString(it?.caption, 160),
+    })
+  }
+  return {
+    title: cleanString(src.title, 180) || 'Viví la fiesta',
+    items,
+  }
+}
+
+function sanitizeSponsors(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const itemsIn = Array.isArray(src.items) ? src.items : Array.isArray(input) ? input : []
+  const items = []
+  for (const it of itemsIn.slice(0, 40)) {
+    const name = cleanString(it?.name, 160)
+    const logoUrl = cleanString(it?.logoUrl, 2048)
+    if (!name && !logoUrl) continue
+    items.push({
+      id: cleanString(it?.id, 64) || newItemId('spo'),
+      name: name || 'Auspiciante',
+      logoUrl,
+      url: cleanString(it?.url, 2048),
+      sortOrder: Number.isFinite(Number(it?.sortOrder)) ? Number(it.sortOrder) : items.length,
+    })
+  }
+  items.sort((a, b) => a.sortOrder - b.sortOrder)
+  return {
+    title: cleanString(src.title, 180) || 'Auspician y acompañan',
+    items,
+  }
+}
+
+function sanitizeUsefulInfo(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const itemsIn = Array.isArray(src.items) ? src.items : []
+  const items = []
+  for (const it of itemsIn.slice(0, 12)) {
+    const title = cleanString(it?.title, 120)
+    const body = cleanMultiline(it?.body, 800)
+    if (!title && !body) continue
+    items.push({
+      id: cleanString(it?.id, 64) || newItemId('info'),
+      title,
+      body,
+    })
+  }
+  return {
+    title: cleanString(src.title, 180) || 'Información útil',
+    items,
+  }
+}
+
 function todayYmdLocal() {
   const now = new Date()
   const y = now.getFullYear()
@@ -151,6 +339,8 @@ function sanitizePagePayload(payload, { current } = {}) {
     heroEyebrow: heroCover.heroBadge,
     heroTitle: heroCover.heroTitle,
     heroSubtitle: heroCover.heroSubtitle,
+    heroSlogan: cleanString(payload?.heroSlogan, 280),
+    heroDateBadge: cleanString(payload?.heroDateBadge, 120),
     heroImageUrl: heroCover.heroImageUrl,
     overlayOpacity: heroCover.overlayOpacity,
     heroPrimaryLabel: heroCover.primaryLabel,
@@ -167,6 +357,51 @@ function sanitizePagePayload(payload, { current } = {}) {
     introTitle: cleanString(payload?.introTitle, 220),
     introParagraphs: sanitizeParagraphs(payload?.introParagraphs),
     highlights: sanitizeHighlights(payload?.highlights),
+    sectionNav: sanitizeSectionNav(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'sectionNav')
+        ? payload.sectionNav
+        : current?.sectionNav,
+    ),
+    schedule: sanitizeSchedule(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'schedule')
+        ? payload.schedule
+        : undefined,
+      current?.schedule,
+    ),
+    artists: sanitizeArtists(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'artists')
+        ? payload.artists
+        : undefined,
+      current?.artists,
+    ),
+    tickets: sanitizeTickets(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'tickets')
+        ? payload.tickets
+        : undefined,
+      current?.tickets,
+    ),
+    news: sanitizeNews(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'news') ? payload.news : undefined,
+      current?.news,
+    ),
+    gallery: sanitizeGallery(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'gallery')
+        ? payload.gallery
+        : undefined,
+      current?.gallery,
+    ),
+    sponsors: sanitizeSponsors(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'sponsors')
+        ? payload.sponsors
+        : undefined,
+      current?.sponsors,
+    ),
+    usefulInfo: sanitizeUsefulInfo(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'usefulInfo')
+        ? payload.usefulInfo
+        : undefined,
+      current?.usefulInfo,
+    ),
     formNotice: cleanMultiline(payload?.formNotice, 2000),
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
