@@ -16,10 +16,14 @@ function getMailConfig() {
   const pass = env('MAIL_PASS') || env('MAIL_APP_PASSWORD')
   const fromName = env('MAIL_FROM_NAME', 'Municipalidad de Trancas')
   const fromAddress = env('MAIL_FROM') || user
+  const port = Number(env('MAIL_PORT', '587')) || 587
+  const secureEnv = env('MAIL_SECURE', '')
+  const secure =
+    secureEnv === 'true' ? true : secureEnv === 'false' ? false : port === 465
   return {
     host: env('MAIL_HOST', 'smtp.gmail.com'),
-    port: Number(env('MAIL_PORT', '587')) || 587,
-    secure: env('MAIL_SECURE', 'false') === 'true',
+    port,
+    secure,
     user,
     pass,
     from: `"${fromName}" <${fromAddress}>`,
@@ -41,6 +45,10 @@ function getTransporter() {
     host: cfg.host,
     port: cfg.port,
     secure: cfg.secure,
+    // Evita que Railway/SMTP dejen colgada la request por minutos.
+    connectionTimeout: 12_000,
+    greetingTimeout: 12_000,
+    socketTimeout: 20_000,
     auth: {
       user: cfg.user,
       pass: cfg.pass,
@@ -59,16 +67,22 @@ export async function sendMail({ to, subject, text, html }) {
   }
   const cfg = getMailConfig()
   const transporter = getTransporter()
-  const info = await transporter.sendMail({
-    from: cfg.from,
-    to: recipient,
-    subject: String(subject || '').trim() || 'Municipalidad de Trancas',
-    text: String(text || '').trim(),
-    html: html ? String(html) : undefined,
-  })
-  return {
-    messageId: info?.messageId || null,
-    accepted: Array.isArray(info?.accepted) ? info.accepted : [],
+  try {
+    const info = await transporter.sendMail({
+      from: cfg.from,
+      to: recipient,
+      subject: String(subject || '').trim() || 'Municipalidad de Trancas',
+      text: String(text || '').trim(),
+      html: html ? String(html) : undefined,
+    })
+    return {
+      messageId: info?.messageId || null,
+      accepted: Array.isArray(info?.accepted) ? info.accepted : [],
+    }
+  } catch (err) {
+    // Forzar recreación del transporter ante fallos de auth/red.
+    cachedTransporter = null
+    throw err
   }
 }
 

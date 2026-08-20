@@ -55,6 +55,7 @@ export const postFdcStallApplicationCtrl = asyncHandler(async (req, res) => {
     ok: true,
     application: result.application,
     emailSent: result.emailSent,
+    emailQueued: result.emailQueued,
   })
 })
 

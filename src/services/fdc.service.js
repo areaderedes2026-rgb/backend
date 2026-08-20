@@ -312,6 +312,7 @@ async function sendConfirmationEmail(application) {
     return { sent: true }
   } catch (e) {
     const msg = e?.message || 'No se pudo enviar el correo.'
+    console.error('[fdc] email error:', msg)
     await updateFdcStallApplicationEmailMeta(application.id, {
       emailSentAt: null,
       emailError: msg,
@@ -320,16 +321,26 @@ async function sendConfirmationEmail(application) {
   }
 }
 
+function queueConfirmationEmail(application) {
+  // No bloquear la respuesta HTTP: SMTP (Gmail) en Railway puede demorar o colgarse.
+  setImmediate(() => {
+    void sendConfirmationEmail(application).catch((err) => {
+      console.error('[fdc] confirmation email failed:', err?.message || err)
+    })
+  })
+}
+
 export async function createFdcStallApplication(payload) {
   const page = await getFdcPageContentRow()
   assertFormWindowOpen(page)
   const data = sanitizeApplicationPayload(payload)
   const created = await createFdcStallApplicationRow(data)
-  const mailResult = await sendConfirmationEmail(created)
-  const fresh = await findFdcStallApplicationById(created.id)
+  const emailQueued = isMailConfigured()
+  queueConfirmationEmail(created)
   return {
-    application: fresh,
-    emailSent: Boolean(mailResult.sent),
+    application: created,
+    emailSent: false,
+    emailQueued,
   }
 }
 
