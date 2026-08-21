@@ -87,6 +87,7 @@ function sanitizeSectionNav(input) {
     const label = cleanString(item?.label, 80)
     const href = cleanString(item?.href, 240)
     if (!label && !href) continue
+    if (href.toLowerCase() === '#info-util') continue
     out.push({
       id: cleanString(item?.id, 64) || newItemId('nav'),
       label,
@@ -122,9 +123,30 @@ function sanitizeSchedule(input, fallback = null) {
       items,
     })
   }
+
+  const images = []
+  const imagesIn = Array.isArray(src.images) ? src.images : []
+  for (const img of imagesIn.slice(0, 10)) {
+    const imageUrl = cleanString(img?.imageUrl, 2048)
+    if (!imageUrl) continue
+    images.push({
+      id: cleanString(img?.id, 64) || newItemId('schimg'),
+      imageUrl,
+      caption: cleanString(img?.caption, 200),
+    })
+  }
+  let featuredImageUrl = cleanString(src.featuredImageUrl, 2048)
+  if (images.length === 0 && featuredImageUrl) {
+    images.push({ id: newItemId('schimg'), imageUrl: featuredImageUrl, caption: '' })
+  }
+  if (images.length > 0) {
+    featuredImageUrl = images[0].imageUrl
+  }
+
   return {
     title: cleanString(src.title, 180) || 'Cronograma de actividades',
-    featuredImageUrl: cleanString(src.featuredImageUrl, 2048),
+    featuredImageUrl,
+    images,
     ctaLabel: cleanString(src.ctaLabel, 80),
     ctaHref: cleanString(src.ctaHref, 240),
     days,
@@ -163,6 +185,13 @@ function sanitizeTickets(input, fallback = null) {
     const s = cleanString(b, 200)
     if (s) bullets.push(s)
   }
+  const overlayRaw = Number(src.overlayOpacity)
+  const overlayFallback = Number(fallback?.overlayOpacity)
+  const overlayOpacity = Number.isFinite(overlayRaw)
+    ? Math.min(90, Math.max(0, Math.round(overlayRaw)))
+    : Number.isFinite(overlayFallback)
+      ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
+      : 55
   return {
     title: cleanString(src.title, 180) || 'Entradas online',
     body: cleanMultiline(src.body, 1200),
@@ -170,6 +199,7 @@ function sanitizeTickets(input, fallback = null) {
     ctaLabel: cleanString(src.ctaLabel, 80) || 'Comprar entradas',
     ctaUrl: cleanString(src.ctaUrl, 2048),
     imageUrl: cleanString(src.imageUrl, 2048),
+    overlayOpacity,
   }
 }
 
@@ -396,12 +426,7 @@ function sanitizePagePayload(payload, { current } = {}) {
         : undefined,
       current?.sponsors,
     ),
-    usefulInfo: sanitizeUsefulInfo(
-      Object.prototype.hasOwnProperty.call(payload || {}, 'usefulInfo')
-        ? payload.usefulInfo
-        : undefined,
-      current?.usefulInfo,
-    ),
+    usefulInfo: { title: '', items: [] },
     formNotice: cleanMultiline(payload?.formNotice, 2000),
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
