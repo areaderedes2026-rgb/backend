@@ -285,7 +285,7 @@ export function buildFdcStallConfirmationEmail(application) {
   const id = application?.id != null ? String(application.id) : '—'
   const name = String(application?.fullName || '').trim() || 'Vecino/a'
   const rubro =
-    application?.rubro === 'Otro' && application?.rubroOther
+    String(application?.rubro || '').trim().toLowerCase() === 'otro' && application?.rubroOther
       ? `Otro: ${application.rubroOther}`
       : String(application?.rubro || '—')
   const subject = `Constancia de preinscripción FDC 2026 — Solicitud N° ${id}`

@@ -37,6 +37,30 @@ function toDateYmd(value) {
 
 function mapPageRow(row) {
   if (!row) return null
+  const useful = parseJsonSafe(row.useful_info_json, {}) || {}
+  const rubrosFromUseful = Array.isArray(useful.formRubros) ? useful.formRubros : null
+  const rubrosFromCol =
+    row.form_rubros_json != null ? parseJsonSafe(row.form_rubros_json, null) : null
+  // Preferimos useful_info (se escribe siempre en el upsert) si trae rubros.
+  const formRubros =
+    rubrosFromUseful && rubrosFromUseful.length > 0
+      ? rubrosFromUseful
+      : rubrosFromCol && Array.isArray(rubrosFromCol) && rubrosFromCol.length > 0
+        ? rubrosFromCol
+        : null
+  const formEyebrow =
+    (useful.formEyebrow != null && String(useful.formEyebrow).trim() !== ''
+      ? String(useful.formEyebrow)
+      : '') ||
+    row.form_eyebrow ||
+    ''
+  const formHeading =
+    (useful.formHeading != null && String(useful.formHeading).trim() !== ''
+      ? String(useful.formHeading)
+      : '') ||
+    row.form_heading ||
+    ''
+
   return {
     heroEyebrow: row.hero_eyebrow || '',
     heroTitle: row.hero_title || '',
@@ -68,10 +92,13 @@ function mapPageRow(row) {
     news: parseJsonSafe(row.news_json, null),
     gallery: parseJsonSafe(row.gallery_json, null),
     sponsors: parseJsonSafe(row.sponsors_json, null),
-    usefulInfo: parseJsonSafe(row.useful_info_json, null),
+    usefulInfo: useful,
     formNotice: row.form_notice || '',
     formOpenFrom: toDateYmd(row.form_open_from),
     formOpenUntil: toDateYmd(row.form_open_until),
+    formRubros,
+    formEyebrow,
+    formHeading,
     ctaTitle: row.cta_title || '',
     ctaBody: row.cta_body || '',
     whatsappMessage: row.whatsapp_message != null ? String(row.whatsapp_message) : '',
@@ -142,12 +169,15 @@ export async function upsertFdcPageContentRow(payload) {
       sponsors_json,
       useful_info_json,
       form_notice,
+      form_rubros_json,
+      form_eyebrow,
+      form_heading,
       form_open_from,
       form_open_until,
       cta_title,
       cta_body,
       whatsapp_message
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
@@ -179,6 +209,9 @@ export async function upsertFdcPageContentRow(payload) {
       sponsors_json = VALUES(sponsors_json),
       useful_info_json = VALUES(useful_info_json),
       form_notice = VALUES(form_notice),
+      form_rubros_json = VALUES(form_rubros_json),
+      form_eyebrow = VALUES(form_eyebrow),
+      form_heading = VALUES(form_heading),
       form_open_from = VALUES(form_open_from),
       form_open_until = VALUES(form_open_until),
       cta_title = VALUES(cta_title),
@@ -224,6 +257,9 @@ export async function upsertFdcPageContentRow(payload) {
       JSON.stringify(payload.sponsors || {}),
       JSON.stringify(payload.usefulInfo || {}),
       payload.formNotice,
+      JSON.stringify(Array.isArray(payload.formRubros) ? payload.formRubros : []),
+      payload.formEyebrow || '',
+      payload.formHeading || '',
       payload.formOpenFrom || null,
       payload.formOpenUntil || null,
       payload.ctaTitle,

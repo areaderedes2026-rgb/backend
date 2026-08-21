@@ -31,6 +31,40 @@ export const FDC_RUBROS = [
   'Otro',
 ]
 
+function sanitizeFormRubros(input, fallback = null) {
+  const source = Array.isArray(input)
+    ? input
+    : Array.isArray(fallback)
+      ? fallback
+      : FDC_RUBROS
+  const seen = new Set()
+  const out = []
+  for (const raw of source) {
+    const label = cleanString(raw, 80)
+    if (!label) continue
+    if (isOtherRubroLabel(label)) continue // «Otro» se agrega siempre al final
+    const key = label.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(label)
+    if (out.length >= 39) break
+  }
+  out.push('Otro')
+  return out
+}
+
+function isOtherRubroLabel(label) {
+  return String(label || '').trim().toLowerCase() === 'otro'
+}
+
+function resolveAllowedRubros(page) {
+  if (Array.isArray(page?.formRubros) && page.formRubros.length) {
+    return sanitizeFormRubros(page.formRubros, FDC_RUBROS)
+  }
+  const fromUseful = page?.usefulInfo?.formRubros
+  return sanitizeFormRubros(fromUseful, FDC_RUBROS)
+}
+
 const ALLOWED_STATUS = new Set(['sin_resolver', 'leida', 'resuelta'])
 
 function cleanString(value, maxLen = 0) {
@@ -365,7 +399,7 @@ function sanitizePagePayload(payload, { current } = {}) {
       preserved != null && String(preserved).trim() !== '' ? String(preserved).trim() : null
   }
 
-  return {
+  const data = {
     heroEyebrow: heroCover.heroBadge,
     heroTitle: heroCover.heroTitle,
     heroSubtitle: heroCover.heroSubtitle,
@@ -426,17 +460,53 @@ function sanitizePagePayload(payload, { current } = {}) {
         : undefined,
       current?.sponsors,
     ),
-    usefulInfo: { title: '', items: [] },
+    usefulInfo: (() => {
+      const formRubros = sanitizeFormRubros(
+        Object.prototype.hasOwnProperty.call(payload || {}, 'formRubros')
+          ? payload.formRubros
+          : undefined,
+        current?.formRubros || current?.usefulInfo?.formRubros,
+      )
+      const formEyebrow = cleanString(
+        Object.prototype.hasOwnProperty.call(payload || {}, 'formEyebrow')
+          ? payload.formEyebrow
+          : current?.formEyebrow || current?.usefulInfo?.formEyebrow,
+        120,
+      )
+      const formHeading = cleanString(
+        Object.prototype.hasOwnProperty.call(payload || {}, 'formHeading')
+          ? payload.formHeading
+          : current?.formHeading || current?.usefulInfo?.formHeading,
+        240,
+      )
+      return {
+        title: '',
+        items: [],
+        formRubros,
+        formEyebrow,
+        formHeading,
+      }
+    })(),
     formNotice: cleanMultiline(payload?.formNotice, 2000),
+    formRubros: [],
+    formEyebrow: '',
+    formHeading: '',
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
     ctaTitle: cleanString(payload?.ctaTitle, 240),
     ctaBody: cleanMultiline(payload?.ctaBody, 2500),
     whatsappMessage,
   }
+
+  // Top-level (API) + espejo en usefulInfo (columna JSON que ya existía)
+  data.formRubros = data.usefulInfo.formRubros
+  data.formEyebrow = data.usefulInfo.formEyebrow
+  data.formHeading = data.usefulInfo.formHeading
+
+  return data
 }
 
-function sanitizeApplicationPayload(payload) {
+function sanitizeApplicationPayload(payload, allowedRubros = FDC_RUBROS) {
   const fullName = cleanString(payload?.fullName, 180)
   const dni = cleanString(payload?.dni, 20).replace(/[^\d]/g, '')
   const address = cleanString(payload?.address, 320)
@@ -447,6 +517,7 @@ function sanitizeApplicationPayload(payload) {
   const rubroOther = cleanString(payload?.rubroOther, 180)
   const participatedBefore = Boolean(payload?.participatedBefore)
   const participationYears = cleanString(payload?.participationYears, 120)
+  const rubros = sanitizeFormRubros(allowedRubros, FDC_RUBROS)
 
   if (!fullName) throw new AppError('El apellido y nombre son obligatorios.', 400)
   if (!dni || dni.length < 7 || dni.length > 10) {
@@ -460,10 +531,10 @@ function sanitizeApplicationPayload(payload) {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new AppError('El correo electrónico es obligatorio y debe ser válido.', 400)
   }
-  if (!FDC_RUBROS.includes(rubro)) {
+  if (!rubros.includes(rubro)) {
     throw new AppError('Seleccioná un rubro válido.', 400)
   }
-  if (rubro === 'Otro' && !rubroOther) {
+  if (isOtherRubroLabel(rubro) && !rubroOther) {
     throw new AppError('Indicá el rubro en «Otro».', 400)
   }
   if (participatedBefore && !participationYears) {
@@ -478,7 +549,7 @@ function sanitizeApplicationPayload(payload) {
     phone,
     email,
     rubro,
-    rubroOther: rubro === 'Otro' ? rubroOther : '',
+    rubroOther: isOtherRubroLabel(rubro) ? rubroOther : '',
     participatedBefore,
     participationYears: participatedBefore ? participationYears : '',
     // Documentación / aviso: solo informativos en el front; se registran como leídos.
@@ -594,7 +665,7 @@ function queueConfirmationEmail(application) {
 export async function createFdcStallApplication(payload) {
   const page = await getFdcPageContentRow()
   assertFormWindowOpen(page)
-  const data = sanitizeApplicationPayload(payload)
+  const data = sanitizeApplicationPayload(payload, resolveAllowedRubros(page))
 
   const duplicate = await findFdcStallDuplicateByContact({
     email: data.email,

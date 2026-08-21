@@ -16,7 +16,6 @@ import {
 import { authenticate, requireStaff } from '../middlewares/auth.middleware.js'
 import { createRateLimiter } from '../middlewares/rateLimit.middleware.js'
 import { validate } from '../middlewares/validate.middleware.js'
-import { FDC_RUBROS } from '../services/fdc.service.js'
 
 const router = Router()
 
@@ -62,7 +61,7 @@ router.post(
     body('locality').trim().notEmpty().isLength({ max: 160 }),
     body('phone').trim().notEmpty().isLength({ min: 6, max: 80 }),
     body('email').trim().notEmpty().isEmail().isLength({ max: 180 }),
-    body('rubro').trim().notEmpty().isIn(FDC_RUBROS),
+    body('rubro').trim().notEmpty().isLength({ max: 80 }),
     body('rubroOther').optional({ checkFalsy: true }).trim().isLength({ max: 180 }),
     body('participatedBefore').optional().isBoolean(),
     body('participationYears').optional({ checkFalsy: true }).trim().isLength({ max: 120 }),
