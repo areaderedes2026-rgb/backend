@@ -479,18 +479,26 @@ function sanitizePagePayload(payload, { current } = {}) {
           : current?.formHeading || current?.usefulInfo?.formHeading,
         240,
       )
+      const heroImageUrlMobile = cleanString(
+        Object.prototype.hasOwnProperty.call(payload || {}, 'heroImageUrlMobile')
+          ? payload.heroImageUrlMobile
+          : current?.heroImageUrlMobile || current?.usefulInfo?.heroImageUrlMobile,
+        2048,
+      )
       return {
         title: '',
         items: [],
         formRubros,
         formEyebrow,
         formHeading,
+        heroImageUrlMobile,
       }
     })(),
     formNotice: cleanMultiline(payload?.formNotice, 2000),
     formRubros: [],
     formEyebrow: '',
     formHeading: '',
+    heroImageUrlMobile: '',
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
     ctaTitle: cleanString(payload?.ctaTitle, 240),
@@ -502,6 +510,7 @@ function sanitizePagePayload(payload, { current } = {}) {
   data.formRubros = data.usefulInfo.formRubros
   data.formEyebrow = data.usefulInfo.formEyebrow
   data.formHeading = data.usefulInfo.formHeading
+  data.heroImageUrlMobile = data.usefulInfo.heroImageUrlMobile
 
   return data
 }
