@@ -324,6 +324,47 @@ function sanitizeSponsors(input, fallback = null) {
   }
 }
 
+function sanitizeFestivalStats(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const allowedIcons = new Set([
+    'horse',
+    'people',
+    'music',
+    'jineteada',
+    'peruvianHorse',
+    'food',
+    'market',
+    'calendar',
+    'ticket',
+  ])
+  const itemsIn = Array.isArray(src.items) ? src.items : []
+  const items = []
+  for (const it of itemsIn.slice(0, 8)) {
+    const valueText = cleanString(it?.valueText, 80)
+    const value = Math.max(0, Math.min(999999, Math.round(Number(it?.value) || 0)))
+    const label = cleanString(it?.label, 80)
+    const sublabel = cleanString(it?.sublabel, 80)
+    if (!valueText && value <= 0 && !label && !sublabel) continue
+    const iconRaw = cleanString(it?.icon, 32)
+    items.push({
+      id: cleanString(it?.id, 64) || newItemId('stat'),
+      icon: allowedIcons.has(iconRaw) ? iconRaw : 'horse',
+      prefix: cleanString(it?.prefix, 8),
+      value: valueText ? 0 : value,
+      valueText,
+      label,
+      sublabel,
+      sortOrder: Number.isFinite(Number(it?.sortOrder)) ? Number(it.sortOrder) : items.length,
+    })
+  }
+  items.sort((a, b) => a.sortOrder - b.sortOrder)
+  return {
+    title: cleanString(src.title, 180) || 'La fiesta en números',
+    subtitle: cleanString(src.subtitle, 280),
+    items,
+  }
+}
+
 function sanitizeHeroCountdown(input, fallback = null) {
   const src = input && typeof input === 'object' ? input : {}
   const fb = fallback && typeof fallback === 'object' ? fallback : {}
@@ -497,6 +538,12 @@ function sanitizePagePayload(payload, { current } = {}) {
         ? payload.sponsors
         : undefined,
       current?.sponsors,
+    ),
+    festivalStats: sanitizeFestivalStats(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'festivalStats')
+        ? payload.festivalStats
+        : undefined,
+      current?.festivalStats,
     ),
     usefulInfo: (() => {
       const formRubros = sanitizeFormRubros(
