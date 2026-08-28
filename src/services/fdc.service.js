@@ -187,6 +187,15 @@ function sanitizeSchedule(input, fallback = null) {
   }
 }
 
+function sanitizeSectionBackgroundStyle(rawStyle, imageUrl = '') {
+  const img = cleanString(imageUrl, 2048)
+  const key = cleanString(rawStyle, 16).toLowerCase()
+  if (key === 'dark') return 'dark'
+  if (key === 'light') return 'light'
+  if (key === 'image') return img ? 'image' : 'light'
+  return img ? 'image' : 'light'
+}
+
 function sanitizeArtists(input, fallback = null) {
   const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
   const itemsIn = Array.isArray(src.items) ? src.items : Array.isArray(input) ? input : []
@@ -218,6 +227,7 @@ function sanitizeArtists(input, fallback = null) {
   }
   dayPosters.sort((a, b) => a.sortOrder - b.sortOrder)
 
+  const backgroundImageUrl = cleanString(src.backgroundImageUrl, 2048)
   const overlayRaw = Number(src.overlayOpacity)
   const overlayFallback = Number(fallback?.overlayOpacity)
   const overlayOpacity = Number.isFinite(overlayRaw)
@@ -230,7 +240,8 @@ function sanitizeArtists(input, fallback = null) {
     title: cleanString(src.title, 180) || 'Cartelera artística',
     ctaLabel: cleanString(src.ctaLabel, 80),
     ctaHref: cleanString(src.ctaHref, 240),
-    backgroundImageUrl: cleanString(src.backgroundImageUrl, 2048),
+    backgroundStyle: sanitizeSectionBackgroundStyle(src.backgroundStyle, backgroundImageUrl),
+    backgroundImageUrl,
     overlayOpacity,
     dayPosters,
     items,
@@ -252,13 +263,15 @@ function sanitizeTickets(input, fallback = null) {
     : Number.isFinite(overlayFallback)
       ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
       : 55
+  const imageUrl = cleanString(src.imageUrl, 2048)
   return {
     title: cleanString(src.title, 180) || 'Entradas online',
     body: cleanMultiline(src.body, 1200),
     bullets,
     ctaLabel: cleanString(src.ctaLabel, 80) || 'Comprar entradas',
     ctaUrl: cleanString(src.ctaUrl, 2048),
-    imageUrl: cleanString(src.imageUrl, 2048),
+    backgroundStyle: sanitizeSectionBackgroundStyle(src.backgroundStyle, imageUrl),
+    imageUrl,
     overlayOpacity,
   }
 }
