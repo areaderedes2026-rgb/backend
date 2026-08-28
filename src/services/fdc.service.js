@@ -218,10 +218,20 @@ function sanitizeArtists(input, fallback = null) {
   }
   dayPosters.sort((a, b) => a.sortOrder - b.sortOrder)
 
+  const overlayRaw = Number(src.overlayOpacity)
+  const overlayFallback = Number(fallback?.overlayOpacity)
+  const overlayOpacity = Number.isFinite(overlayRaw)
+    ? Math.min(90, Math.max(0, Math.round(overlayRaw)))
+    : Number.isFinite(overlayFallback)
+      ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
+      : 55
+
   return {
     title: cleanString(src.title, 180) || 'Cartelera artística',
     ctaLabel: cleanString(src.ctaLabel, 80),
     ctaHref: cleanString(src.ctaHref, 240),
+    backgroundImageUrl: cleanString(src.backgroundImageUrl, 2048),
+    overlayOpacity,
     dayPosters,
     items,
   }
