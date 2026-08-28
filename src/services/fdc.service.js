@@ -447,6 +447,24 @@ function sanitizeVisitInfo(input, fallback = null) {
         'Ver en mapa',
       mapUrl: cleanString(directionsSrc.mapUrl, 2048),
       mapImageUrl: cleanString(directionsSrc.mapImageUrl, 2048),
+      mapLat: (() => {
+        const n = Number(directionsSrc.mapLat)
+        const fb = Number(directionsFallback.mapLat)
+        const value = Number.isFinite(n) ? n : Number.isFinite(fb) ? fb : null
+        return value == null ? null : Math.min(90, Math.max(-90, value))
+      })(),
+      mapLng: (() => {
+        const n = Number(directionsSrc.mapLng)
+        const fb = Number(directionsFallback.mapLng)
+        const value = Number.isFinite(n) ? n : Number.isFinite(fb) ? fb : null
+        return value == null ? null : Math.min(180, Math.max(-180, value))
+      })(),
+      mapZoom: (() => {
+        const n = Number(directionsSrc.mapZoom)
+        const fb = Number(directionsFallback.mapZoom)
+        const value = Number.isFinite(n) ? n : Number.isFinite(fb) ? fb : 14
+        return Math.min(18, Math.max(10, Math.round(value)))
+      })(),
     },
     faq: {
       showTitle:
