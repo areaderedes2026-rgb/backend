@@ -112,6 +112,7 @@ function mapPageRow(row) {
             targetAt: '',
             offsetYMobile: 0,
             offsetYDesktop: 0,
+            labelColor: '#ffffff',
           },
     ctaTitle: row.cta_title || '',
     ctaBody: row.cta_body || '',

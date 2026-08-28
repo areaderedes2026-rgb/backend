@@ -341,26 +341,27 @@ function sanitizeFestivalStats(input, fallback = null) {
   const items = []
   for (const it of itemsIn.slice(0, 8)) {
     const valueText = cleanString(it?.valueText, 80)
-    const value = Math.max(0, Math.min(999999, Math.round(Number(it?.value) || 0)))
-    const label = cleanString(it?.label, 80)
+    let label = cleanString(it?.label, 80)
     const sublabel = cleanString(it?.sublabel, 80)
-    if (!valueText && value <= 0 && !label && !sublabel) continue
+    if (!label && valueText) label = valueText
+    if (!label && sublabel) label = sublabel
+    const value = Math.max(0, Math.min(999999, Math.round(Number(it?.value) || 0)))
+    if (!label || value <= 0) continue
     const iconRaw = cleanString(it?.icon, 32)
     items.push({
       id: cleanString(it?.id, 64) || newItemId('stat'),
       icon: allowedIcons.has(iconRaw) ? iconRaw : 'horse',
       prefix: cleanString(it?.prefix, 8),
-      value: valueText ? 0 : value,
-      valueText,
+      value,
       label,
-      sublabel,
       sortOrder: Number.isFinite(Number(it?.sortOrder)) ? Number(it.sortOrder) : items.length,
     })
   }
   items.sort((a, b) => a.sortOrder - b.sortOrder)
   return {
-    title: cleanString(src.title, 180) || 'La fiesta en números',
+    title: cleanString(src.title, 180),
     subtitle: cleanString(src.subtitle, 280),
+    showTitle: src.showTitle === true || src.showTitle === 1,
     items,
   }
 }
@@ -384,6 +385,24 @@ function sanitizeHeroCountdown(input, fallback = null) {
     targetAt: targetAt || '',
     offsetYMobile: clampOffset(src.offsetYMobile, fb.offsetYMobile),
     offsetYDesktop: clampOffset(src.offsetYDesktop, fb.offsetYDesktop),
+    labelColor: (() => {
+      const normalizeHex = (rawIn) => {
+        let raw = cleanString(rawIn, 16)
+        if (/^[0-9a-fA-F]{6}$/.test(raw)) raw = `#${raw}`
+        if (/^[0-9a-fA-F]{3}$/.test(raw)) raw = `#${raw}`
+        if (/^#[0-9a-fA-F]{6}$/i.test(raw)) return raw.toLowerCase()
+        if (/^#[0-9a-fA-F]{3}$/i.test(raw)) {
+          const c = raw.slice(1)
+          return `#${c[0]}${c[0]}${c[1]}${c[1]}${c[2]}${c[2]}`.toLowerCase()
+        }
+        return null
+      }
+      return (
+        normalizeHex(src.labelColor) ||
+        normalizeHex(fb.labelColor) ||
+        '#ffffff'
+      )
+    })(),
   }
 }
 
@@ -596,6 +615,7 @@ function sanitizePagePayload(payload, { current } = {}) {
       targetAt: '',
       offsetYMobile: 0,
       offsetYDesktop: 0,
+      labelColor: '#ffffff',
     },
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
