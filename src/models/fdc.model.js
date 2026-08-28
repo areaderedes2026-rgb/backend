@@ -93,6 +93,7 @@ function mapPageRow(row) {
     gallery: parseJsonSafe(row.gallery_json, null),
     sponsors: parseJsonSafe(row.sponsors_json, null),
     festivalStats: parseJsonSafe(row.festival_stats_json, null),
+    visitInfo: parseJsonSafe(row.visit_info_json, null),
     usefulInfo: useful,
     formNotice: row.form_notice || '',
     formOpenFrom: toDateYmd(row.form_open_from),
@@ -183,6 +184,7 @@ export async function upsertFdcPageContentRow(payload) {
       gallery_json,
       sponsors_json,
       festival_stats_json,
+      visit_info_json,
       useful_info_json,
       form_notice,
       form_rubros_json,
@@ -193,7 +195,7 @@ export async function upsertFdcPageContentRow(payload) {
       cta_title,
       cta_body,
       whatsapp_message
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       hero_eyebrow = VALUES(hero_eyebrow),
       hero_title = VALUES(hero_title),
@@ -224,6 +226,7 @@ export async function upsertFdcPageContentRow(payload) {
       gallery_json = VALUES(gallery_json),
       sponsors_json = VALUES(sponsors_json),
       festival_stats_json = VALUES(festival_stats_json),
+      visit_info_json = VALUES(visit_info_json),
       useful_info_json = VALUES(useful_info_json),
       form_notice = VALUES(form_notice),
       form_rubros_json = VALUES(form_rubros_json),
@@ -273,6 +276,7 @@ export async function upsertFdcPageContentRow(payload) {
       JSON.stringify(payload.gallery || {}),
       JSON.stringify(payload.sponsors || {}),
       JSON.stringify(payload.festivalStats || {}),
+      JSON.stringify(payload.visitInfo || {}),
       JSON.stringify(payload.usefulInfo || {}),
       payload.formNotice,
       JSON.stringify(Array.isArray(payload.formRubros) ? payload.formRubros : []),

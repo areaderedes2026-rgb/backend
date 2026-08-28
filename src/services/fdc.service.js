@@ -389,6 +389,74 @@ function sanitizeFestivalStats(input, fallback = null) {
   }
 }
 
+function sanitizeVisitInfo(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
+  const fb = fallback && typeof fallback === 'object' ? fallback : {}
+  const directionsSrc = src.directions && typeof src.directions === 'object' ? src.directions : {}
+  const faqSrc = src.faq && typeof src.faq === 'object' ? src.faq : {}
+  const backgroundImageUrl = cleanString(src.backgroundImageUrl, 2048)
+  const overlayRaw = Number(src.overlayOpacity)
+  const overlayFallback = Number(fb.overlayOpacity)
+  const overlayOpacity = Number.isFinite(overlayRaw)
+    ? Math.min(90, Math.max(0, Math.round(overlayRaw)))
+    : Number.isFinite(overlayFallback)
+      ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
+      : 55
+
+  const faqItemsIn = Array.isArray(faqSrc.items) ? faqSrc.items : []
+  const faqItems = []
+  for (const it of faqItemsIn.slice(0, 24)) {
+    const question = cleanString(it?.question, 280)
+    if (!question) continue
+    faqItems.push({
+      id: cleanString(it?.id, 64) || newItemId('faq'),
+      question,
+      answer: cleanMultiline(it?.answer, 1200),
+      sortOrder: Number.isFinite(Number(it?.sortOrder)) ? Number(it.sortOrder) : faqItems.length,
+    })
+  }
+  faqItems.sort((a, b) => a.sortOrder - b.sortOrder)
+
+  const directionsFallback = fb.directions && typeof fb.directions === 'object' ? fb.directions : {}
+  const faqFallback = fb.faq && typeof fb.faq === 'object' ? fb.faq : {}
+
+  return {
+    backgroundStyle: sanitizeSectionBackgroundStyle(src.backgroundStyle, backgroundImageUrl),
+    backgroundImageUrl,
+    overlayOpacity,
+    directions: {
+      showTitle:
+        directionsSrc.showTitle === true ||
+        directionsSrc.showTitle === 1 ||
+        (directionsSrc.showTitle == null && directionsFallback.showTitle !== false),
+      title:
+        cleanString(directionsSrc.title, 180) ||
+        cleanString(directionsFallback.title, 180) ||
+        '¿Cómo llegar?',
+      address: cleanString(directionsSrc.address, 400),
+      mapButtonLabel:
+        cleanString(directionsSrc.mapButtonLabel, 80) ||
+        cleanString(directionsFallback.mapButtonLabel, 80) ||
+        'Ver en mapa',
+      mapUrl: cleanString(directionsSrc.mapUrl, 2048),
+      mapImageUrl: cleanString(directionsSrc.mapImageUrl, 2048),
+    },
+    faq: {
+      showTitle:
+        faqSrc.showTitle === true ||
+        faqSrc.showTitle === 1 ||
+        (faqSrc.showTitle == null && faqFallback.showTitle !== false),
+      title:
+        cleanString(faqSrc.title, 180) ||
+        cleanString(faqFallback.title, 180) ||
+        'Preguntas frecuentes',
+      ctaLabel: cleanString(faqSrc.ctaLabel, 80),
+      ctaHref: cleanString(faqSrc.ctaHref, 2048),
+      items: faqItems,
+    },
+  }
+}
+
 function sanitizeHeroCountdown(input, fallback = null) {
   const src = input && typeof input === 'object' ? input : {}
   const fb = fallback && typeof fallback === 'object' ? fallback : {}
@@ -586,6 +654,12 @@ function sanitizePagePayload(payload, { current } = {}) {
         ? payload.festivalStats
         : undefined,
       current?.festivalStats,
+    ),
+    visitInfo: sanitizeVisitInfo(
+      Object.prototype.hasOwnProperty.call(payload || {}, 'visitInfo')
+        ? payload.visitInfo
+        : undefined,
+      current?.visitInfo,
     ),
     usefulInfo: (() => {
       const formRubros = sanitizeFormRubros(
