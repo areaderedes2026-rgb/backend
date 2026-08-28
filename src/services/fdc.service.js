@@ -178,6 +178,7 @@ function sanitizeSchedule(input, fallback = null) {
   }
 
   return {
+    ...extractSectionBackground(src, fallback, 'dark'),
     title: cleanString(src.title, 180) || 'Cronograma de actividades',
     featuredImageUrl,
     images,
@@ -194,6 +195,27 @@ function sanitizeSectionBackgroundStyle(rawStyle, imageUrl = '') {
   if (key === 'light') return 'light'
   if (key === 'image') return img ? 'image' : 'light'
   return img ? 'image' : 'light'
+}
+
+function extractSectionBackground(src, fallback, defaultStyle = 'light') {
+  const fb = fallback && typeof fallback === 'object' ? fallback : {}
+  const backgroundImageUrl = cleanString(src?.backgroundImageUrl, 2048)
+  const overlayRaw = Number(src?.overlayOpacity)
+  const overlayFallback = Number(fb.overlayOpacity)
+  const overlayOpacity = Number.isFinite(overlayRaw)
+    ? Math.min(90, Math.max(0, Math.round(overlayRaw)))
+    : Number.isFinite(overlayFallback)
+      ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
+      : 55
+  const styleSource =
+    src?.backgroundStyle != null && String(src.backgroundStyle).trim() !== ''
+      ? src.backgroundStyle
+      : fb.backgroundStyle ?? defaultStyle
+  return {
+    backgroundStyle: sanitizeSectionBackgroundStyle(styleSource, backgroundImageUrl),
+    backgroundImageUrl,
+    overlayOpacity,
+  }
 }
 
 function sanitizeArtists(input, fallback = null) {
@@ -227,22 +249,11 @@ function sanitizeArtists(input, fallback = null) {
   }
   dayPosters.sort((a, b) => a.sortOrder - b.sortOrder)
 
-  const backgroundImageUrl = cleanString(src.backgroundImageUrl, 2048)
-  const overlayRaw = Number(src.overlayOpacity)
-  const overlayFallback = Number(fallback?.overlayOpacity)
-  const overlayOpacity = Number.isFinite(overlayRaw)
-    ? Math.min(90, Math.max(0, Math.round(overlayRaw)))
-    : Number.isFinite(overlayFallback)
-      ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
-      : 55
-
   return {
+    ...extractSectionBackground(src, fallback, 'light'),
     title: cleanString(src.title, 180) || 'Cartelera artística',
     ctaLabel: cleanString(src.ctaLabel, 80),
     ctaHref: cleanString(src.ctaHref, 240),
-    backgroundStyle: sanitizeSectionBackgroundStyle(src.backgroundStyle, backgroundImageUrl),
-    backgroundImageUrl,
-    overlayOpacity,
     dayPosters,
     items,
   }
@@ -256,23 +267,24 @@ function sanitizeTickets(input, fallback = null) {
     const s = cleanString(b, 200)
     if (s) bullets.push(s)
   }
-  const overlayRaw = Number(src.overlayOpacity)
-  const overlayFallback = Number(fallback?.overlayOpacity)
-  const overlayOpacity = Number.isFinite(overlayRaw)
-    ? Math.min(90, Math.max(0, Math.round(overlayRaw)))
-    : Number.isFinite(overlayFallback)
-      ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
-      : 55
   const imageUrl = cleanString(src.imageUrl, 2048)
+  const bg = extractSectionBackground(
+    { ...src, backgroundImageUrl: src.backgroundImageUrl || imageUrl },
+    fallback,
+    'light',
+  )
   return {
     title: cleanString(src.title, 180) || 'Entradas online',
     body: cleanMultiline(src.body, 1200),
     bullets,
     ctaLabel: cleanString(src.ctaLabel, 80) || 'Comprar entradas',
     ctaUrl: cleanString(src.ctaUrl, 2048),
-    backgroundStyle: sanitizeSectionBackgroundStyle(src.backgroundStyle, imageUrl),
+    backgroundStyle: sanitizeSectionBackgroundStyle(
+      src.backgroundStyle ?? fallback?.backgroundStyle,
+      imageUrl,
+    ),
     imageUrl,
-    overlayOpacity,
+    overlayOpacity: bg.overlayOpacity,
   }
 }
 
@@ -293,6 +305,7 @@ function sanitizeNews(input, fallback = null) {
     })
   }
   return {
+    ...extractSectionBackground(src, fallback, 'light'),
     title: cleanString(src.title, 180) || 'Noticias del festival',
     ctaLabel: cleanString(src.ctaLabel, 80),
     ctaHref: cleanString(src.ctaHref, 240),
@@ -319,6 +332,7 @@ function sanitizeGallery(input, fallback = null) {
     })
   }
   return {
+    ...extractSectionBackground(src, fallback, 'dark'),
     title: cleanString(src.title, 180) || 'Viví la fiesta',
     items,
   }
@@ -342,6 +356,7 @@ function sanitizeSponsors(input, fallback = null) {
   }
   items.sort((a, b) => a.sortOrder - b.sortOrder)
   return {
+    ...extractSectionBackground(src, fallback, 'light'),
     title: cleanString(src.title, 180) || 'Auspician y acompañan',
     items,
   }
@@ -382,6 +397,7 @@ function sanitizeFestivalStats(input, fallback = null) {
   }
   items.sort((a, b) => a.sortOrder - b.sortOrder)
   return {
+    ...extractSectionBackground(src, fallback, 'light'),
     title: cleanString(src.title, 180),
     subtitle: cleanString(src.subtitle, 280),
     showTitle: src.showTitle === true || src.showTitle === 1,
@@ -394,14 +410,7 @@ function sanitizeVisitInfo(input, fallback = null) {
   const fb = fallback && typeof fallback === 'object' ? fallback : {}
   const directionsSrc = src.directions && typeof src.directions === 'object' ? src.directions : {}
   const faqSrc = src.faq && typeof src.faq === 'object' ? src.faq : {}
-  const backgroundImageUrl = cleanString(src.backgroundImageUrl, 2048)
-  const overlayRaw = Number(src.overlayOpacity)
-  const overlayFallback = Number(fb.overlayOpacity)
-  const overlayOpacity = Number.isFinite(overlayRaw)
-    ? Math.min(90, Math.max(0, Math.round(overlayRaw)))
-    : Number.isFinite(overlayFallback)
-      ? Math.min(90, Math.max(0, Math.round(overlayFallback)))
-      : 55
+  const sectionBg = extractSectionBackground(src, fb, 'light')
 
   const faqItemsIn = Array.isArray(faqSrc.items) ? faqSrc.items : []
   const faqItems = []
@@ -421,9 +430,7 @@ function sanitizeVisitInfo(input, fallback = null) {
   const faqFallback = fb.faq && typeof fb.faq === 'object' ? fb.faq : {}
 
   return {
-    backgroundStyle: sanitizeSectionBackgroundStyle(src.backgroundStyle, backgroundImageUrl),
-    backgroundImageUrl,
-    overlayOpacity,
+    ...sectionBg,
     directions: {
       showTitle:
         directionsSrc.showTitle === true ||
@@ -495,6 +502,12 @@ function sanitizeHeroCountdown(input, fallback = null) {
       )
     })(),
   }
+}
+
+function sanitizeFormSection(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : {}
+  const fb = fallback && typeof fallback === 'object' ? fallback : {}
+  return extractSectionBackground(src, fb, 'dark')
 }
 
 function sanitizeUsefulInfo(input, fallback = null) {
@@ -692,6 +705,12 @@ function sanitizePagePayload(payload, { current } = {}) {
           : current?.heroCountdown || current?.usefulInfo?.heroCountdown,
         current?.heroCountdown || current?.usefulInfo?.heroCountdown,
       )
+      const formSection = sanitizeFormSection(
+        Object.prototype.hasOwnProperty.call(payload || {}, 'formSection')
+          ? payload.formSection
+          : undefined,
+        current?.formSection || current?.usefulInfo?.formSection,
+      )
       return {
         title: '',
         items: [],
@@ -700,6 +719,7 @@ function sanitizePagePayload(payload, { current } = {}) {
         formHeading,
         heroImageUrlMobile,
         heroCountdown,
+        formSection,
       }
     })(),
     formNotice: cleanMultiline(payload?.formNotice, 2000),
@@ -714,6 +734,11 @@ function sanitizePagePayload(payload, { current } = {}) {
       offsetYDesktop: 0,
       labelColor: '#ffffff',
     },
+    formSection: {
+      backgroundStyle: 'dark',
+      backgroundImageUrl: '',
+      overlayOpacity: 55,
+    },
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
     ctaTitle: cleanString(payload?.ctaTitle, 240),
@@ -727,6 +752,7 @@ function sanitizePagePayload(payload, { current } = {}) {
   data.formHeading = data.usefulInfo.formHeading
   data.heroImageUrlMobile = data.usefulInfo.heroImageUrlMobile
   data.heroCountdown = data.usefulInfo.heroCountdown
+  data.formSection = data.usefulInfo.formSection
 
   return data
 }
