@@ -1,7 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler.js'
 import {
   createFdcStallApplication,
-  getFdcLocalityFilterGroups,
   getFdcPageContentAdmin,
   getFdcPageContentPublic,
   getFdcStallApplicationAdmin,
@@ -9,7 +8,6 @@ import {
   listFdcStallApplicationsAdmin,
   removeFdcStallApplication,
   resendFdcStallConfirmationEmail,
-  saveFdcLocalityFilterGroups,
   saveFdcPageContent,
   saveFdcWhatsappTemplate,
   setFdcStallApplicationStatus,
@@ -17,15 +15,8 @@ import {
 
 function stripInternal(content) {
   if (!content) return null
-  const { whatsappMessage, localityFilterGroups, ...rest } = content
-  const usefulInfo =
-    rest.usefulInfo && typeof rest.usefulInfo === 'object'
-      ? { ...rest.usefulInfo }
-      : rest.usefulInfo
-  if (usefulInfo && usefulInfo.localityFilterGroups) {
-    delete usefulInfo.localityFilterGroups
-  }
-  return { ...rest, usefulInfo }
+  const { whatsappMessage, ...rest } = content
+  return rest
 }
 
 export const getFdcContentCtrl = asyncHandler(async (_req, res) => {
@@ -56,21 +47,6 @@ export const putFdcWhatsappTemplateCtrl = asyncHandler(async (req, res) => {
     forceOverwrite: Boolean(body.forceOverwrite),
   })
   res.status(200).json({ ok: true, message: data.message, updatedAt: data.updatedAt })
-})
-
-export const getFdcLocalityFilterGroupsCtrl = asyncHandler(async (_req, res) => {
-  const data = await getFdcLocalityFilterGroups()
-  res.status(200).json({ ok: true, groups: data.groups, updatedAt: data.updatedAt })
-})
-
-export const putFdcLocalityFilterGroupsCtrl = asyncHandler(async (req, res) => {
-  const body = req.body || {}
-  const data = await saveFdcLocalityFilterGroups({
-    groups: body.groups,
-    expectedUpdatedAt: body.expectedUpdatedAt,
-    forceOverwrite: Boolean(body.forceOverwrite),
-  })
-  res.status(200).json({ ok: true, groups: data.groups, updatedAt: data.updatedAt })
 })
 
 export const postFdcStallApplicationCtrl = asyncHandler(async (req, res) => {

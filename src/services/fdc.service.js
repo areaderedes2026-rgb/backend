@@ -7,7 +7,6 @@ import {
   listFdcStallApplications,
   updateFdcStallApplicationEmailMeta,
   updateFdcStallApplicationStatusRow,
-  updateFdcLocalityFilterGroupsRow,
   updateFdcWhatsappMessageRow,
   upsertFdcPageContentRow,
 } from '../models/fdc.model.js'
@@ -113,31 +112,6 @@ function sanitizeHighlights(input) {
 
 function newItemId(prefix) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function sanitizeLocalityFilterGroups(input, fallback = []) {
-  const src = Array.isArray(input) ? input : Array.isArray(fallback) ? fallback : []
-  const groups = []
-  const seenVariants = new Set()
-
-  for (const g of src.slice(0, 40)) {
-    const label = cleanString(g?.label, 120)
-    if (!label) continue
-    const id = cleanString(g?.id, 64) || newItemId('loc')
-    const variants = []
-    for (const v of (Array.isArray(g?.variants) ? g.variants : []).slice(0, 50)) {
-      const s = cleanString(v, 160)
-      if (!s) continue
-      const key = s.toLowerCase()
-      if (seenVariants.has(key)) continue
-      seenVariants.add(key)
-      variants.push(s)
-    }
-    if (variants.length === 0) continue
-    groups.push({ id, label, variants })
-  }
-
-  return groups
 }
 
 function sanitizeSectionNav(input) {
@@ -527,12 +501,6 @@ function sanitizePagePayload(payload, { current } = {}) {
           : current?.heroImageUrlMobile || current?.usefulInfo?.heroImageUrlMobile,
         2048,
       )
-      const localityFilterGroups = sanitizeLocalityFilterGroups(
-        Object.prototype.hasOwnProperty.call(payload || {}, 'localityFilterGroups')
-          ? payload.localityFilterGroups
-          : undefined,
-        current?.localityFilterGroups || current?.usefulInfo?.localityFilterGroups,
-      )
       return {
         title: '',
         items: [],
@@ -540,7 +508,6 @@ function sanitizePagePayload(payload, { current } = {}) {
         formEyebrow,
         formHeading,
         heroImageUrlMobile,
-        localityFilterGroups,
       }
     })(),
     formNotice: cleanMultiline(payload?.formNotice, 2000),
@@ -560,7 +527,6 @@ function sanitizePagePayload(payload, { current } = {}) {
   data.formEyebrow = data.usefulInfo.formEyebrow
   data.formHeading = data.usefulInfo.formHeading
   data.heroImageUrlMobile = data.usefulInfo.heroImageUrlMobile
-  data.localityFilterGroups = data.usefulInfo.localityFilterGroups
 
   return data
 }
@@ -620,15 +586,8 @@ function sanitizeApplicationPayload(payload, allowedRubros = FDC_RUBROS) {
 
 function stripInternalPageFields(content) {
   if (!content) return null
-  const { whatsappMessage, localityFilterGroups, ...rest } = content
-  const usefulInfo =
-    rest.usefulInfo && typeof rest.usefulInfo === 'object'
-      ? { ...rest.usefulInfo }
-      : rest.usefulInfo
-  if (usefulInfo && usefulInfo.localityFilterGroups) {
-    delete usefulInfo.localityFilterGroups
-  }
-  return { ...rest, usefulInfo }
+  const { whatsappMessage, ...rest } = content
+  return rest
 }
 
 export async function getFdcPageContentPublic() {
@@ -657,48 +616,6 @@ export async function getFdcWhatsappTemplate() {
   return {
     message: row.whatsappMessage || '',
     updatedAt: row.updatedAt,
-  }
-}
-
-export async function getFdcLocalityFilterGroups() {
-  const row = await getFdcPageContentRow()
-  if (!row) return { groups: [], updatedAt: null }
-  return {
-    groups: sanitizeLocalityFilterGroups(
-      row.localityFilterGroups || row.usefulInfo?.localityFilterGroups,
-      [],
-    ),
-    updatedAt: row.updatedAt,
-  }
-}
-
-export async function saveFdcLocalityFilterGroups({
-  groups,
-  expectedUpdatedAt,
-  forceOverwrite = false,
-}) {
-  const current = await getFdcPageContentRow()
-  if (!current) {
-    throw new AppError(
-      'Todavía no hay contenido de Fiesta del Caballo. Guardalo una vez desde esa sección y reintentá.',
-      404,
-    )
-  }
-  assertOptimisticLock(
-    expectedUpdatedAt,
-    current.updatedAt,
-    'agrupaciones de localidades FDC',
-    Boolean(forceOverwrite),
-  )
-  const cleaned = sanitizeLocalityFilterGroups(groups, [])
-  await updateFdcLocalityFilterGroupsRow(cleaned)
-  const next = await getFdcPageContentRow()
-  return {
-    groups: sanitizeLocalityFilterGroups(
-      next?.localityFilterGroups || next?.usefulInfo?.localityFilterGroups,
-      [],
-    ),
-    updatedAt: next?.updatedAt,
   }
 }
 
