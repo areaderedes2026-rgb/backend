@@ -4,12 +4,14 @@ import {
   deleteFdcStallApplicationCtrl,
   getFdcContentAdminCtrl,
   getFdcContentCtrl,
+  getFdcLocalityFilterGroupsCtrl,
   getFdcStallApplicationAdminCtrl,
   getFdcWhatsappTemplateCtrl,
   listFdcStallApplicationsAdminCtrl,
   patchFdcStallApplicationStatusCtrl,
   postFdcStallApplicationCtrl,
   putFdcContentCtrl,
+  putFdcLocalityFilterGroupsCtrl,
   putFdcWhatsappTemplateCtrl,
   resendFdcStallEmailCtrl,
 } from '../controllers/fdc.controller.js'
@@ -49,6 +51,25 @@ router.put(
     validate,
   ],
   putFdcWhatsappTemplateCtrl,
+)
+
+router.get(
+  '/admin/locality-filter-groups',
+  authenticate,
+  requireStaff,
+  getFdcLocalityFilterGroupsCtrl,
+)
+
+router.put(
+  '/admin/locality-filter-groups',
+  authenticate,
+  requireStaff,
+  [
+    body('groups').optional().isArray(),
+    body('expectedUpdatedAt').optional({ nullable: true }),
+    validate,
+  ],
+  putFdcLocalityFilterGroupsCtrl,
 )
 
 router.post(

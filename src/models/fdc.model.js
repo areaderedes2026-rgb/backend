@@ -103,6 +103,9 @@ function mapPageRow(row) {
       useful.heroImageUrlMobile != null && String(useful.heroImageUrlMobile).trim() !== ''
         ? String(useful.heroImageUrlMobile).trim()
         : '',
+    localityFilterGroups: Array.isArray(useful.localityFilterGroups)
+      ? useful.localityFilterGroups
+      : [],
     ctaTitle: row.cta_title || '',
     ctaBody: row.cta_body || '',
     whatsappMessage: row.whatsapp_message != null ? String(row.whatsapp_message) : '',
@@ -282,6 +285,20 @@ export async function updateFdcWhatsappMessageRow(message) {
      SET whatsapp_message = ?, updated_at = CURRENT_TIMESTAMP(3)
      WHERE id = 1`,
     [message == null || message === '' ? null : message],
+  )
+  return getFdcPageContentRow()
+}
+
+export async function updateFdcLocalityFilterGroupsRow(groups) {
+  const row = await getFdcPageContentRow()
+  const useful =
+    row?.usefulInfo && typeof row.usefulInfo === 'object' ? { ...row.usefulInfo } : {}
+  useful.localityFilterGroups = Array.isArray(groups) ? groups : []
+  await pool.query(
+    `UPDATE fdc_page_content
+     SET useful_info_json = ?, updated_at = CURRENT_TIMESTAMP(3)
+     WHERE id = 1`,
+    [JSON.stringify(useful)],
   )
   return getFdcPageContentRow()
 }
