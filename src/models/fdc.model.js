@@ -103,6 +103,15 @@ function mapPageRow(row) {
       useful.heroImageUrlMobile != null && String(useful.heroImageUrlMobile).trim() !== ''
         ? String(useful.heroImageUrlMobile).trim()
         : '',
+    heroCountdown:
+      useful.heroCountdown && typeof useful.heroCountdown === 'object'
+        ? useful.heroCountdown
+        : {
+            enabled: false,
+            targetAt: '',
+            offsetYMobile: 0,
+            offsetYDesktop: 0,
+          },
     ctaTitle: row.cta_title || '',
     ctaBody: row.cta_body || '',
     whatsappMessage: row.whatsapp_message != null ? String(row.whatsapp_message) : '',

@@ -324,6 +324,28 @@ function sanitizeSponsors(input, fallback = null) {
   }
 }
 
+function sanitizeHeroCountdown(input, fallback = null) {
+  const src = input && typeof input === 'object' ? input : {}
+  const fb = fallback && typeof fallback === 'object' ? fallback : {}
+  const enabled = src.enabled === true || src.enabled === 1
+  let targetAt = cleanString(src.targetAt, 40)
+  if (targetAt && !/^\d{4}-\d{2}-\d{2}/.test(targetAt)) {
+    targetAt = cleanString(fb.targetAt, 40)
+  }
+  const clampOffset = (value, fbVal) => {
+    const n = Number(value)
+    const fbN = Number(fbVal)
+    const base = Number.isFinite(n) ? n : Number.isFinite(fbN) ? fbN : 0
+    return Math.min(160, Math.max(-160, Math.round(base)))
+  }
+  return {
+    enabled,
+    targetAt: targetAt || '',
+    offsetYMobile: clampOffset(src.offsetYMobile, fb.offsetYMobile),
+    offsetYDesktop: clampOffset(src.offsetYDesktop, fb.offsetYDesktop),
+  }
+}
+
 function sanitizeUsefulInfo(input, fallback = null) {
   const src = input && typeof input === 'object' ? input : fallback && typeof fallback === 'object' ? fallback : {}
   const itemsIn = Array.isArray(src.items) ? src.items : []
@@ -501,6 +523,12 @@ function sanitizePagePayload(payload, { current } = {}) {
           : current?.heroImageUrlMobile || current?.usefulInfo?.heroImageUrlMobile,
         2048,
       )
+      const heroCountdown = sanitizeHeroCountdown(
+        Object.prototype.hasOwnProperty.call(payload || {}, 'heroCountdown')
+          ? payload.heroCountdown
+          : current?.heroCountdown || current?.usefulInfo?.heroCountdown,
+        current?.heroCountdown || current?.usefulInfo?.heroCountdown,
+      )
       return {
         title: '',
         items: [],
@@ -508,6 +536,7 @@ function sanitizePagePayload(payload, { current } = {}) {
         formEyebrow,
         formHeading,
         heroImageUrlMobile,
+        heroCountdown,
       }
     })(),
     formNotice: cleanMultiline(payload?.formNotice, 2000),
@@ -515,6 +544,12 @@ function sanitizePagePayload(payload, { current } = {}) {
     formEyebrow: '',
     formHeading: '',
     heroImageUrlMobile: '',
+    heroCountdown: {
+      enabled: false,
+      targetAt: '',
+      offsetYMobile: 0,
+      offsetYDesktop: 0,
+    },
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
     ctaTitle: cleanString(payload?.ctaTitle, 240),
@@ -527,6 +562,7 @@ function sanitizePagePayload(payload, { current } = {}) {
   data.formEyebrow = data.usefulInfo.formEyebrow
   data.formHeading = data.usefulInfo.formHeading
   data.heroImageUrlMobile = data.usefulInfo.heroImageUrlMobile
+  data.heroCountdown = data.usefulInfo.heroCountdown
 
   return data
 }
