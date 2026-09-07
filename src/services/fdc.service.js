@@ -429,6 +429,78 @@ function sanitizeVisitInfo(input, fallback = null) {
   const directionsFallback = fb.directions && typeof fb.directions === 'object' ? fb.directions : {}
   const faqFallback = fb.faq && typeof fb.faq === 'object' ? fb.faq : {}
 
+  const mapPointsIn = Array.isArray(directionsSrc.points) ? directionsSrc.points : null
+  const mapPoints = []
+  if (mapPointsIn) {
+    for (const it of mapPointsIn.slice(0, 40)) {
+      const title = cleanString(it?.title, 140)
+      const subtitle = cleanString(it?.subtitle, 120)
+      const address = cleanString(it?.address, 220)
+      const lat = Number(it?.lat)
+      const lng = Number(it?.lng)
+      if (!title && !subtitle && !address) continue
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue
+      mapPoints.push({
+        id: cleanString(it?.id, 64) || newItemId('loc'),
+        title: title || subtitle || address,
+        subtitle,
+        address,
+        lat: Math.min(90, Math.max(-90, lat)),
+        lng: Math.min(180, Math.max(-180, lng)),
+        isActive: it?.isActive !== false && it?.isActive !== 0,
+        sortOrder: Number.isFinite(Number(it?.sortOrder))
+          ? Math.max(0, Math.round(Number(it.sortOrder)))
+          : mapPoints.length * 10,
+      })
+    }
+    mapPoints.sort((a, b) => a.sortOrder - b.sortOrder)
+  } else {
+    // Migración legacy: un solo punto desde address + mapLat/mapLng
+    const legacyLat = Number(directionsSrc.mapLat ?? directionsSrc.center?.lat)
+    const legacyLng = Number(directionsSrc.mapLng ?? directionsSrc.center?.lng)
+    const legacyAddress = cleanString(directionsSrc.address, 400)
+    if (Number.isFinite(legacyLat) && Number.isFinite(legacyLng)) {
+      const venue = legacyAddress.split(',')[0]?.trim() || legacyAddress || 'Ubicación del festival'
+      mapPoints.push({
+        id: newItemId('loc'),
+        title: venue,
+        subtitle: '',
+        address: legacyAddress,
+        lat: Math.min(90, Math.max(-90, legacyLat)),
+        lng: Math.min(180, Math.max(-180, legacyLng)),
+        isActive: true,
+        sortOrder: 10,
+      })
+    } else if (Array.isArray(directionsFallback.points)) {
+      for (const it of directionsFallback.points.slice(0, 40)) {
+        const title = cleanString(it?.title, 140)
+        const lat = Number(it?.lat)
+        const lng = Number(it?.lng)
+        if (!title || !Number.isFinite(lat) || !Number.isFinite(lng)) continue
+        mapPoints.push({
+          id: cleanString(it?.id, 64) || newItemId('loc'),
+          title,
+          subtitle: cleanString(it?.subtitle, 120),
+          address: cleanString(it?.address, 220),
+          lat: Math.min(90, Math.max(-90, lat)),
+          lng: Math.min(180, Math.max(-180, lng)),
+          isActive: it?.isActive !== false,
+          sortOrder: Number.isFinite(Number(it?.sortOrder))
+            ? Math.max(0, Math.round(Number(it.sortOrder)))
+            : mapPoints.length * 10,
+        })
+      }
+    }
+  }
+
+  const centerLat = Number(
+    directionsSrc.center?.lat ?? directionsSrc.mapLat ?? directionsFallback.center?.lat ?? mapPoints[0]?.lat,
+  )
+  const centerLng = Number(
+    directionsSrc.center?.lng ?? directionsSrc.mapLng ?? directionsFallback.center?.lng ?? mapPoints[0]?.lng,
+  )
+  const zoomRaw = Number(directionsSrc.zoom ?? directionsSrc.mapZoom ?? directionsFallback.zoom ?? 14)
+
   return {
     ...sectionBg,
     directions: {
@@ -444,31 +516,12 @@ function sanitizeVisitInfo(input, fallback = null) {
         if (/^¿?c[oó]mo llegar\??$/i.test(raw)) return 'Mapa interactivo'
         return raw
       })(),
-      address: cleanString(directionsSrc.address, 400),
-      mapButtonLabel:
-        cleanString(directionsSrc.mapButtonLabel, 80) ||
-        cleanString(directionsFallback.mapButtonLabel, 80) ||
-        'Ver en mapa',
-      mapUrl: cleanString(directionsSrc.mapUrl, 2048),
-      mapImageUrl: cleanString(directionsSrc.mapImageUrl, 2048),
-      mapLat: (() => {
-        const n = Number(directionsSrc.mapLat)
-        const fb = Number(directionsFallback.mapLat)
-        const value = Number.isFinite(n) ? n : Number.isFinite(fb) ? fb : null
-        return value == null ? null : Math.min(90, Math.max(-90, value))
-      })(),
-      mapLng: (() => {
-        const n = Number(directionsSrc.mapLng)
-        const fb = Number(directionsFallback.mapLng)
-        const value = Number.isFinite(n) ? n : Number.isFinite(fb) ? fb : null
-        return value == null ? null : Math.min(180, Math.max(-180, value))
-      })(),
-      mapZoom: (() => {
-        const n = Number(directionsSrc.mapZoom)
-        const fb = Number(directionsFallback.mapZoom)
-        const value = Number.isFinite(n) ? n : Number.isFinite(fb) ? fb : 14
-        return Math.min(18, Math.max(10, Math.round(value)))
-      })(),
+      center: {
+        lat: Number.isFinite(centerLat) ? Math.min(90, Math.max(-90, centerLat)) : -26.2312,
+        lng: Number.isFinite(centerLng) ? Math.min(180, Math.max(-180, centerLng)) : -65.2818,
+      },
+      zoom: Number.isFinite(zoomRaw) ? Math.min(18, Math.max(10, Math.round(zoomRaw))) : 14,
+      points: mapPoints,
     },
     faq: {
       showTitle:
