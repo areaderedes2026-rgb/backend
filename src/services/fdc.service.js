@@ -516,6 +516,10 @@ function sanitizeVisitInfo(input, fallback = null) {
         if (/^¿?c[oó]mo llegar\??$/i.test(raw)) return 'Mapa interactivo'
         return raw
       })(),
+      description:
+        directionsSrc.description != null
+          ? cleanMultiline(directionsSrc.description, 600)
+          : cleanMultiline(directionsFallback.description, 600),
       center: {
         lat: Number.isFinite(centerLat) ? Math.min(90, Math.max(-90, centerLat)) : -26.2312,
         lng: Number.isFinite(centerLng) ? Math.min(180, Math.max(-180, centerLng)) : -65.2818,
