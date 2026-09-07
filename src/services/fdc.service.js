@@ -436,10 +436,14 @@ function sanitizeVisitInfo(input, fallback = null) {
         directionsSrc.showTitle === true ||
         directionsSrc.showTitle === 1 ||
         (directionsSrc.showTitle == null && directionsFallback.showTitle !== false),
-      title:
-        cleanString(directionsSrc.title, 180) ||
-        cleanString(directionsFallback.title, 180) ||
-        '¿Cómo llegar?',
+      title: (() => {
+        const raw =
+          cleanString(directionsSrc.title, 180) ||
+          cleanString(directionsFallback.title, 180) ||
+          'Mapa interactivo'
+        if (/^¿?c[oó]mo llegar\??$/i.test(raw)) return 'Mapa interactivo'
+        return raw
+      })(),
       address: cleanString(directionsSrc.address, 400),
       mapButtonLabel:
         cleanString(directionsSrc.mapButtonLabel, 80) ||
@@ -475,6 +479,7 @@ function sanitizeVisitInfo(input, fallback = null) {
         cleanString(faqSrc.title, 180) ||
         cleanString(faqFallback.title, 180) ||
         'Preguntas frecuentes',
+      ...extractSectionBackground(faqSrc, faqFallback, 'light'),
       ctaLabel: cleanString(faqSrc.ctaLabel, 80),
       ctaHref: cleanString(faqSrc.ctaHref, 2048),
       items: faqItems,
