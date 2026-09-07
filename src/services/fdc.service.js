@@ -31,6 +31,33 @@ export const FDC_RUBROS = [
   'Otro',
 ]
 
+const FDC_MAP_LOCATION_ICONS = new Set([
+  'pin',
+  'horse',
+  'stage',
+  'food',
+  'market',
+  'ticket',
+  'parking',
+  'info',
+  'restroom',
+  'camping',
+  'medical',
+  'hotel',
+  'water',
+  'park',
+  'bus',
+  'car',
+  'landmark',
+])
+
+function sanitizeMapLocationIcon(value, fallback = 'pin') {
+  const key = cleanString(value, 40)
+  if (FDC_MAP_LOCATION_ICONS.has(key)) return key
+  const fb = cleanString(fallback, 40)
+  return FDC_MAP_LOCATION_ICONS.has(fb) ? fb : 'pin'
+}
+
 function sanitizeFormRubros(input, fallback = null) {
   const source = Array.isArray(input)
     ? input
@@ -447,6 +474,7 @@ function sanitizeVisitInfo(input, fallback = null) {
         address,
         lat: Math.min(90, Math.max(-90, lat)),
         lng: Math.min(180, Math.max(-180, lng)),
+        icon: sanitizeMapLocationIcon(it?.icon, 'pin'),
         isActive: it?.isActive !== false && it?.isActive !== 0,
         sortOrder: Number.isFinite(Number(it?.sortOrder))
           ? Math.max(0, Math.round(Number(it.sortOrder)))
@@ -468,6 +496,7 @@ function sanitizeVisitInfo(input, fallback = null) {
         address: legacyAddress,
         lat: Math.min(90, Math.max(-90, legacyLat)),
         lng: Math.min(180, Math.max(-180, legacyLng)),
+        icon: 'pin',
         isActive: true,
         sortOrder: 10,
       })
@@ -484,6 +513,7 @@ function sanitizeVisitInfo(input, fallback = null) {
           address: cleanString(it?.address, 220),
           lat: Math.min(90, Math.max(-90, lat)),
           lng: Math.min(180, Math.max(-180, lng)),
+          icon: sanitizeMapLocationIcon(it?.icon, 'pin'),
           isActive: it?.isActive !== false,
           sortOrder: Number.isFinite(Number(it?.sortOrder))
             ? Math.max(0, Math.round(Number(it.sortOrder)))
