@@ -617,7 +617,26 @@ function sanitizeHeroCountdown(input, fallback = null) {
 function sanitizeFormSection(input, fallback = null) {
   const src = input && typeof input === 'object' ? input : {}
   const fb = fallback && typeof fallback === 'object' ? fallback : {}
-  return extractSectionBackground(src, fb, 'dark')
+  const hasVisible = Object.prototype.hasOwnProperty.call(src, 'visible')
+  const visibleSource = hasVisible ? src.visible : fb.visible
+  const visible =
+    visibleSource === true ||
+    visibleSource === 1 ||
+    visibleSource === '1' ||
+    visibleSource === 'true'
+  return {
+    ...extractSectionBackground(src, fb, 'dark'),
+    visible,
+  }
+}
+
+function assertFormSectionVisible(page) {
+  const visible = page?.formSection?.visible
+  if (visible === true || visible === 1 || visible === '1' || visible === 'true') return
+  throw new AppError(
+    'La preinscripción no está disponible en este momento.',
+    403,
+  )
 }
 
 function sanitizeUsefulInfo(input, fallback = null) {
@@ -848,6 +867,7 @@ function sanitizePagePayload(payload, { current } = {}) {
       backgroundStyle: 'dark',
       backgroundImageUrl: '',
       overlayOpacity: 55,
+      visible: false,
     },
     formOpenFrom: cleanDate(payload?.formOpenFrom),
     formOpenUntil: cleanDate(payload?.formOpenUntil),
@@ -1025,6 +1045,7 @@ function queueConfirmationEmail(application) {
 
 export async function createFdcStallApplication(payload) {
   const page = await getFdcPageContentRow()
+  assertFormSectionVisible(page)
   assertFormWindowOpen(page)
   const data = sanitizeApplicationPayload(payload, resolveAllowedRubros(page))
 
