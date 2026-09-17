@@ -262,26 +262,24 @@ function sanitizeArtists(input, fallback = null) {
   }
   items.sort((a, b) => a.sortOrder - b.sortOrder)
 
-  const postersIn = Array.isArray(src.dayPosters) ? src.dayPosters : []
-  const dayPosters = []
-  for (const it of postersIn.slice(0, 4)) {
-    const imageUrl = cleanString(it?.imageUrl, 2048)
-    if (!imageUrl) continue
-    dayPosters.push({
-      id: cleanString(it?.id, 64) || newItemId('dp'),
-      label: cleanString(it?.label, 80),
-      imageUrl,
-      sortOrder: Number.isFinite(Number(it?.sortOrder)) ? Number(it.sortOrder) : dayPosters.length,
-    })
+  let posterImageUrl = cleanString(src.posterImageUrl, 2048)
+  if (!posterImageUrl && Array.isArray(src.dayPosters)) {
+    for (const it of src.dayPosters.slice(0, 4)) {
+      const imageUrl = cleanString(it?.imageUrl, 2048)
+      if (imageUrl) {
+        posterImageUrl = imageUrl
+        break
+      }
+    }
   }
-  dayPosters.sort((a, b) => a.sortOrder - b.sortOrder)
 
   return {
     ...extractSectionBackground(src, fallback, 'light'),
     title: cleanString(src.title, 180) || 'Cartelera artística',
     ctaLabel: cleanString(src.ctaLabel, 80),
     ctaHref: cleanString(src.ctaHref, 240),
-    dayPosters,
+    posterImageUrl,
+    dayPosters: [],
     items,
   }
 }
