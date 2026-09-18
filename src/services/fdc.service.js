@@ -298,12 +298,51 @@ function sanitizeTickets(input, fallback = null) {
     fallback,
     'light',
   )
+  const pointsSrc = Array.isArray(src.salePoints)
+    ? src.salePoints
+    : Array.isArray(fallback?.salePoints)
+      ? fallback.salePoints
+      : []
+  const salePoints = []
+  for (const it of pointsSrc.slice(0, 12)) {
+    const city = cleanString(it?.city, 80)
+    if (!city) continue
+    const raw = Array.isArray(it?.addresses)
+      ? it.addresses
+      : String(it?.address || '')
+          .split('\n')
+          .map((x) => String(x || '').trim())
+          .filter(Boolean)
+    const addresses = []
+    for (const line of raw.slice(0, 6)) {
+      const address = cleanString(line, 220)
+      if (address) addresses.push(address)
+    }
+    if (addresses.length === 0) continue
+    salePoints.push({
+      id: cleanString(it?.id, 64) || newItemId('sp'),
+      city,
+      addresses,
+    })
+  }
+  const onlineUrl =
+    cleanString(src.onlineUrl, 2048) || cleanString(src.ctaUrl, 2048)
+  const onlineLabel =
+    cleanString(src.onlineLabel, 80) || cleanString(src.ctaLabel, 80) || 'Comprá online'
+
   return {
-    title: cleanString(src.title, 180) || 'Entradas online',
+    title: cleanString(src.title, 180) || 'Entradas',
     body: cleanMultiline(src.body, 1200),
     bullets,
-    ctaLabel: cleanString(src.ctaLabel, 80) || 'Comprar entradas',
-    ctaUrl: cleanString(src.ctaUrl, 2048),
+    price: cleanString(src.price, 32),
+    pricePrefix: cleanString(src.pricePrefix, 8) || '$',
+    partnerName: cleanString(src.partnerName, 80),
+    onlineLabel,
+    onlineUrl,
+    ctaLabel: onlineLabel,
+    ctaUrl: onlineUrl,
+    salePointsTitle: cleanString(src.salePointsTitle, 120) || 'Puntos de venta presenciales',
+    salePoints,
     backgroundStyle: sanitizeSectionBackgroundStyle(
       src.backgroundStyle ?? fallback?.backgroundStyle,
       imageUrl,
