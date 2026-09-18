@@ -500,6 +500,28 @@ export async function findFdcFaqInquiryByIdRow(id) {
   return mapFaqInquiryRow(rows[0] ?? null)
 }
 
+export async function findFdcFaqInquiryByPhone(phone) {
+  await ensureFdcFaqInquiriesTable()
+  const phoneKey = normalizePhoneKey(phone)
+  if (!phoneKey || phoneKey.length < 6) return null
+
+  const [rows] = await pool.query(
+    `SELECT * FROM fdc_faq_inquiries
+     WHERE phone IS NOT NULL
+       AND TRIM(phone) != ''
+       AND REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', ''), '(', ''), ')', '') LIKE ?
+     ORDER BY id ASC
+     LIMIT 40`,
+    [`%${phoneKey}`],
+  )
+  for (const row of rows) {
+    if (normalizePhoneKey(row.phone) === phoneKey) {
+      return mapFaqInquiryRow(row)
+    }
+  }
+  return null
+}
+
 export async function listFdcFaqInquiriesRows({ status = '', limit = 200 } = {}) {
   await ensureFdcFaqInquiriesTable()
   const n = Number.isFinite(Number(limit)) ? Math.max(1, Math.min(Number(limit), 500)) : 200

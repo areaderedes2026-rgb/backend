@@ -4,6 +4,7 @@ import {
   deleteFdcFaqInquiryRow,
   deleteFdcStallApplicationRow,
   findFdcFaqInquiryByIdRow,
+  findFdcFaqInquiryByPhone,
   findFdcStallApplicationById,
   findFdcStallDuplicateByContact,
   getFdcPageContentRow,
@@ -1234,6 +1235,14 @@ export async function createFdcFaqInquiry(payload) {
   }
   if (words > 50) {
     throw new AppError('La consulta puede tener como máximo 50 palabras.', 400)
+  }
+
+  const existing = await findFdcFaqInquiryByPhone(phone)
+  if (existing) {
+    throw new AppError(
+      'Ya recibimos una consulta con este celular. Te vamos a responder por WhatsApp. Si necesitás agregar algo, esperá nuestra respuesta.',
+      409,
+    )
   }
 
   return createFdcFaqInquiryRow({
