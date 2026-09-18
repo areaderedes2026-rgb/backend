@@ -1,15 +1,22 @@
 import { Router } from 'express'
 import { body, param, query } from 'express-validator'
 import {
+  deleteFdcFaqInquiryCtrl,
   deleteFdcStallApplicationCtrl,
   getFdcContentAdminCtrl,
   getFdcContentCtrl,
+  getFdcFaqInquiryAdminCtrl,
+  getFdcFaqInquiryWhatsappTemplateCtrl,
   getFdcStallApplicationAdminCtrl,
   getFdcWhatsappTemplateCtrl,
+  listFdcFaqInquiriesAdminCtrl,
   listFdcStallApplicationsAdminCtrl,
+  patchFdcFaqInquiryStatusCtrl,
   patchFdcStallApplicationStatusCtrl,
+  postFdcFaqInquiryCtrl,
   postFdcStallApplicationCtrl,
   putFdcContentCtrl,
+  putFdcFaqInquiryWhatsappTemplateCtrl,
   putFdcWhatsappTemplateCtrl,
   resendFdcStallEmailCtrl,
 } from '../controllers/fdc.controller.js'
@@ -118,6 +125,86 @@ router.delete(
   requireStaff,
   [param('id').isInt({ min: 1 }), validate],
   deleteFdcStallApplicationCtrl,
+)
+
+const faqInquiryRateLimit = createRateLimiter({
+  windowMs: 10 * 60_000,
+  max: 20,
+  message: 'Recibimos muchas consultas desde este origen. Intentá nuevamente en unos minutos.',
+})
+
+router.post(
+  '/faq-inquiries',
+  faqInquiryRateLimit,
+  [
+    body('fullName').trim().notEmpty().isLength({ min: 5, max: 180 }),
+    body('phone').trim().notEmpty().isLength({ min: 6, max: 80 }),
+    body('topic').trim().notEmpty().isLength({ max: 80 }),
+    body('message').trim().notEmpty().isLength({ min: 8, max: 800 }),
+    validate,
+  ],
+  postFdcFaqInquiryCtrl,
+)
+
+router.get(
+  '/admin/faq-inquiries',
+  authenticate,
+  requireStaff,
+  [
+    query('status')
+      .optional({ checkFalsy: true })
+      .trim()
+      .isIn(['sin_resolver', 'leida', 'resuelta']),
+    validate,
+  ],
+  listFdcFaqInquiriesAdminCtrl,
+)
+
+router.get(
+  '/admin/faq-inquiries/:id',
+  authenticate,
+  requireStaff,
+  [param('id').isInt({ min: 1 }), validate],
+  getFdcFaqInquiryAdminCtrl,
+)
+
+router.patch(
+  '/admin/faq-inquiries/:id/status',
+  authenticate,
+  requireStaff,
+  [
+    param('id').isInt({ min: 1 }),
+    body('status').trim().isIn(['sin_resolver', 'leida', 'resuelta']),
+    validate,
+  ],
+  patchFdcFaqInquiryStatusCtrl,
+)
+
+router.delete(
+  '/admin/faq-inquiries/:id',
+  authenticate,
+  requireStaff,
+  [param('id').isInt({ min: 1 }), validate],
+  deleteFdcFaqInquiryCtrl,
+)
+
+router.get(
+  '/admin/faq-inquiry-whatsapp-message',
+  authenticate,
+  requireStaff,
+  getFdcFaqInquiryWhatsappTemplateCtrl,
+)
+
+router.put(
+  '/admin/faq-inquiry-whatsapp-message',
+  authenticate,
+  requireStaff,
+  [
+    body('message').optional().isString().isLength({ max: 3500 }),
+    body('expectedUpdatedAt').optional({ nullable: true }),
+    validate,
+  ],
+  putFdcFaqInquiryWhatsappTemplateCtrl,
 )
 
 export default router

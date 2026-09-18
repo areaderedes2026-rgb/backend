@@ -428,3 +428,111 @@ export async function deleteFdcStallApplicationRow(id) {
   await pool.query(`ALTER TABLE fdc_stall_applications AUTO_INCREMENT = ${nextId}`)
   return true
 }
+
+function mapFaqInquiryRow(row) {
+  if (!row) return null
+  const fullName = row.full_name || ''
+  const parts = String(fullName).trim().split(/\s+/).filter(Boolean)
+  return {
+    id: row.id,
+    fullName,
+    firstName: parts[0] || '',
+    lastName: parts.slice(1).join(' '),
+    dni: '',
+    email: '',
+    phone: row.phone || '',
+    topic: row.topic || '',
+    message: row.message || '',
+    status: row.status || 'sin_resolver',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+let faqInquiriesTableReady = null
+
+export async function ensureFdcFaqInquiriesTable() {
+  if (!faqInquiriesTableReady) {
+    faqInquiriesTableReady = pool
+      .query(
+        `CREATE TABLE IF NOT EXISTS fdc_faq_inquiries (
+          id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+          full_name VARCHAR(180) NOT NULL,
+          phone VARCHAR(80) NOT NULL,
+          topic VARCHAR(80) NOT NULL,
+          message TEXT NOT NULL,
+          status VARCHAR(24) NOT NULL DEFAULT 'sin_resolver',
+          created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+          updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+          PRIMARY KEY (id),
+          INDEX idx_fdc_faq_inquiries_status (status),
+          INDEX idx_fdc_faq_inquiries_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+      )
+      .then(() => true)
+      .catch((err) => {
+        faqInquiriesTableReady = null
+        throw err
+      })
+  }
+  await faqInquiriesTableReady
+}
+
+export async function createFdcFaqInquiryRow(payload) {
+  await ensureFdcFaqInquiriesTable()
+  const [result] = await pool.query(
+    `INSERT INTO fdc_faq_inquiries (full_name, phone, topic, message, status)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      payload.fullName,
+      payload.phone,
+      payload.topic,
+      payload.message,
+      payload.status || 'sin_resolver',
+    ],
+  )
+  return findFdcFaqInquiryByIdRow(result.insertId)
+}
+
+export async function findFdcFaqInquiryByIdRow(id) {
+  await ensureFdcFaqInquiriesTable()
+  const [rows] = await pool.query('SELECT * FROM fdc_faq_inquiries WHERE id = ? LIMIT 1', [id])
+  return mapFaqInquiryRow(rows[0] ?? null)
+}
+
+export async function listFdcFaqInquiriesRows({ status = '', limit = 200 } = {}) {
+  await ensureFdcFaqInquiriesTable()
+  const n = Number.isFinite(Number(limit)) ? Math.max(1, Math.min(Number(limit), 500)) : 200
+  if (status) {
+    const [rows] = await pool.query(
+      `SELECT * FROM fdc_faq_inquiries
+       WHERE status = ?
+       ORDER BY created_at DESC
+       LIMIT ${n}`,
+      [status],
+    )
+    return rows.map(mapFaqInquiryRow)
+  }
+  const [rows] = await pool.query(
+    `SELECT * FROM fdc_faq_inquiries
+     ORDER BY created_at DESC
+     LIMIT ${n}`,
+  )
+  return rows.map(mapFaqInquiryRow)
+}
+
+export async function updateFdcFaqInquiryStatusRow(id, status) {
+  await ensureFdcFaqInquiriesTable()
+  await pool.query('UPDATE fdc_faq_inquiries SET status = ? WHERE id = ?', [status, id])
+  return findFdcFaqInquiryByIdRow(id)
+}
+
+export async function deleteFdcFaqInquiryRow(id) {
+  await ensureFdcFaqInquiriesTable()
+  const [result] = await pool.query('DELETE FROM fdc_faq_inquiries WHERE id = ? LIMIT 1', [id])
+  if (!result.affectedRows) return false
+  const [rows] = await pool.query('SELECT COALESCE(MAX(id), 0) AS maxId FROM fdc_faq_inquiries')
+  const nextId = Math.max(1, Math.floor(Number(rows[0]?.maxId || 0) + 1))
+  await pool.query(`ALTER TABLE fdc_faq_inquiries AUTO_INCREMENT = ${nextId}`)
+  return true
+}

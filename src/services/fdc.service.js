@@ -1,10 +1,15 @@
 import {
+  createFdcFaqInquiryRow,
   createFdcStallApplicationRow,
+  deleteFdcFaqInquiryRow,
   deleteFdcStallApplicationRow,
+  findFdcFaqInquiryByIdRow,
   findFdcStallApplicationById,
   findFdcStallDuplicateByContact,
   getFdcPageContentRow,
+  listFdcFaqInquiriesRows,
   listFdcStallApplications,
+  updateFdcFaqInquiryStatusRow,
   updateFdcStallApplicationEmailMeta,
   updateFdcStallApplicationStatusRow,
   updateFdcWhatsappMessageRow,
@@ -98,6 +103,21 @@ function cleanString(value, maxLen = 0) {
   const v = String(value || '').trim()
   if (!maxLen) return v
   return v.slice(0, maxLen)
+}
+
+function cleanSlug(value, maxLen = 40) {
+  return cleanString(value, maxLen)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_-]/g, '')
+    .replace(/^-|-$/g, '')
+}
+
+function countWords(text) {
+  const t = String(text || '').trim()
+  if (!t) return 0
+  return t.split(/\s+/).filter(Boolean).length
 }
 
 function cleanMultiline(value, maxLen = 0) {
@@ -606,6 +626,50 @@ function sanitizeVisitInfo(input, fallback = null) {
       ...extractSectionBackground(faqSrc, faqFallback, 'light'),
       ctaLabel: cleanString(faqSrc.ctaLabel, 80),
       ctaHref: cleanString(faqSrc.ctaHref, 2048),
+      inquiryEnabled:
+        faqSrc.inquiryEnabled === true ||
+        faqSrc.inquiryEnabled === 1 ||
+        (faqSrc.inquiryEnabled == null && faqFallback.inquiryEnabled !== false),
+      inquiryTitle:
+        cleanString(faqSrc.inquiryTitle, 180) ||
+        cleanString(faqFallback.inquiryTitle, 180) ||
+        '¿No encontraste tu respuesta?',
+      inquiryIntro:
+        faqSrc.inquiryIntro != null
+          ? cleanMultiline(faqSrc.inquiryIntro, 500)
+          : cleanMultiline(faqFallback.inquiryIntro, 500),
+      inquiryTopics: (() => {
+        const listIn = Array.isArray(faqSrc.inquiryTopics)
+          ? faqSrc.inquiryTopics
+          : Array.isArray(faqFallback.inquiryTopics)
+            ? faqFallback.inquiryTopics
+            : []
+        const out = []
+        for (const it of listIn.slice(0, 16)) {
+          const label = cleanString(it?.label ?? it, 80)
+          if (!label) continue
+          const value =
+            cleanSlug(it?.value, 40) ||
+            label
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')
+              .slice(0, 40)
+          if (!value) continue
+          out.push({
+            id: cleanString(it?.id, 64) || newItemId('faq-topic'),
+            value,
+            label,
+          })
+        }
+        return out
+      })(),
+      inquiryWhatsappMessage: cleanMultiline(
+        faqSrc.inquiryWhatsappMessage ?? faqFallback.inquiryWhatsappMessage,
+        3500,
+      ),
       items: faqItems,
     },
   }
@@ -980,6 +1044,10 @@ function sanitizeApplicationPayload(payload, allowedRubros = FDC_RUBROS) {
 function stripInternalPageFields(content) {
   if (!content) return null
   const { whatsappMessage, ...rest } = content
+  if (rest.visitInfo?.faq && typeof rest.visitInfo.faq === 'object') {
+    const { inquiryWhatsappMessage, ...faqRest } = rest.visitInfo.faq
+    rest.visitInfo = { ...rest.visitInfo, faq: faqRest }
+  }
   return rest
 }
 
@@ -1144,6 +1212,126 @@ export async function setFdcStallApplicationStatus(
     throw new AppError('Estado no válido.', 400)
   }
   return updateFdcStallApplicationStatusRow(id, nextStatus)
+}
+
+export async function createFdcFaqInquiry(payload) {
+  const fullName = cleanString(payload?.fullName, 180)
+  const phone = cleanString(payload?.phone, 80)
+  const topic = cleanString(payload?.topic, 80)
+  const message = cleanMultiline(payload?.message, 800)
+  const words = countWords(message)
+  const nameParts = fullName.split(/\s+/).filter(Boolean)
+
+  if (nameParts.length < 2 || fullName.length < 5) {
+    throw new AppError('Ingresá tu nombre completo (nombre y apellido).', 400)
+  }
+  if (!phone || phone.length < 6) {
+    throw new AppError('El celular es obligatorio (al menos 6 caracteres).', 400)
+  }
+  if (!topic) throw new AppError('Elegí el motivo de tu consulta.', 400)
+  if (words < 5) {
+    throw new AppError('Contanos tu consulta en al menos 5 palabras.', 400)
+  }
+  if (words > 50) {
+    throw new AppError('La consulta puede tener como máximo 50 palabras.', 400)
+  }
+
+  return createFdcFaqInquiryRow({
+    fullName,
+    phone,
+    topic,
+    message,
+    status: 'sin_resolver',
+  })
+}
+
+export async function listFdcFaqInquiriesAdmin({ status = '' } = {}) {
+  const value = cleanString(status, 24).toLowerCase()
+  return listFdcFaqInquiriesRows({
+    status: ALLOWED_STATUS.has(value) ? value : '',
+  })
+}
+
+export async function getFdcFaqInquiryAdmin(id) {
+  const row = await findFdcFaqInquiryByIdRow(id)
+  if (!row) throw new AppError('Consulta no encontrada.', 404)
+  return row
+}
+
+export async function setFdcFaqInquiryStatus(
+  id,
+  status,
+  expectedUpdatedAt,
+  forceOverwrite = false,
+) {
+  const current = await findFdcFaqInquiryByIdRow(id)
+  if (!current) throw new AppError('Consulta no encontrada.', 404)
+  assertOptimisticLock(
+    expectedUpdatedAt,
+    current.updatedAt,
+    'consulta FAQ FDC',
+    Boolean(forceOverwrite),
+  )
+  const nextStatus = cleanString(status, 24).toLowerCase()
+  if (!ALLOWED_STATUS.has(nextStatus)) {
+    throw new AppError('Estado no válido.', 400)
+  }
+  return updateFdcFaqInquiryStatusRow(id, nextStatus)
+}
+
+export async function removeFdcFaqInquiry(id) {
+  const current = await findFdcFaqInquiryByIdRow(id)
+  if (!current) throw new AppError('Consulta no encontrada.', 404)
+  await deleteFdcFaqInquiryRow(id)
+}
+
+export async function getFdcFaqInquiryWhatsappTemplate() {
+  const row = await getFdcPageContentRow()
+  return {
+    message: row?.visitInfo?.faq?.inquiryWhatsappMessage || '',
+    updatedAt: row?.updatedAt || null,
+  }
+}
+
+export async function saveFdcFaqInquiryWhatsappTemplate({
+  message,
+  expectedUpdatedAt,
+  forceOverwrite = false,
+}) {
+  const current = await getFdcPageContentRow()
+  if (!current) {
+    throw new AppError(
+      'Todavía no hay contenido de Fiesta del Caballo. Guardalo una vez desde esa sección y reintentá.',
+      404,
+    )
+  }
+  assertOptimisticLock(
+    expectedUpdatedAt,
+    current.updatedAt,
+    'plantilla de WhatsApp de consultas FDC',
+    Boolean(forceOverwrite),
+  )
+  const visitInfo = sanitizeVisitInfo(
+    {
+      ...(current.visitInfo || {}),
+      faq: {
+        ...(current.visitInfo?.faq || {}),
+        inquiryWhatsappMessage: cleanMultiline(message, 3500),
+      },
+    },
+    current.visitInfo,
+  )
+  await saveFdcPageContent({
+    ...current,
+    visitInfo,
+    expectedUpdatedAt,
+    forceOverwrite: true,
+  })
+  const next = await getFdcPageContentRow()
+  return {
+    message: next?.visitInfo?.faq?.inquiryWhatsappMessage || '',
+    updatedAt: next?.updatedAt || null,
+  }
 }
 
 export async function removeFdcStallApplication(id) {
