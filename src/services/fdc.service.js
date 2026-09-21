@@ -300,6 +300,7 @@ function sanitizeArtists(input, fallback = null) {
     ctaLabel: cleanString(src.ctaLabel, 80),
     ctaHref: cleanString(src.ctaHref, 240),
     posterImageUrl,
+    showDailyArtists: src.showDailyArtists === true || src.showDailyArtists === 1,
     dayPosters: [],
     items,
   }
