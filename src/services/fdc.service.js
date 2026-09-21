@@ -283,6 +283,35 @@ function sanitizeArtists(input, fallback = null) {
   }
   items.sort((a, b) => a.sortOrder - b.sortOrder)
 
+  const lineupDays = []
+  const lineupIn = Array.isArray(src.lineupDays)
+    ? src.lineupDays
+    : Array.isArray(fallback?.lineupDays)
+      ? fallback.lineupDays
+      : []
+  for (const day of lineupIn.slice(0, 8)) {
+    const label = cleanString(day?.label, 80)
+    const rawNames = Array.isArray(day?.names)
+      ? day.names
+      : String(day?.namesText || '')
+          .split(/\r?\n/)
+    const names = []
+    for (const n of rawNames) {
+      const name = cleanString(n, 160)
+      if (!name) continue
+      names.push(name)
+      if (names.length >= 24) break
+    }
+    if (!label && names.length === 0) continue
+    lineupDays.push({
+      id: cleanString(day?.id, 64) || newItemId('ld'),
+      label,
+      names,
+      sortOrder: Number.isFinite(Number(day?.sortOrder)) ? Number(day.sortOrder) : lineupDays.length,
+    })
+  }
+  lineupDays.sort((a, b) => a.sortOrder - b.sortOrder)
+
   let posterImageUrl = cleanString(src.posterImageUrl, 2048)
   if (!posterImageUrl && Array.isArray(src.dayPosters)) {
     for (const it of src.dayPosters.slice(0, 4)) {
@@ -301,6 +330,7 @@ function sanitizeArtists(input, fallback = null) {
     ctaHref: cleanString(src.ctaHref, 240),
     posterImageUrl,
     showDailyArtists: src.showDailyArtists === true || src.showDailyArtists === 1,
+    lineupDays,
     dayPosters: [],
     items,
   }
