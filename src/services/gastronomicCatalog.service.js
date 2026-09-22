@@ -77,6 +77,36 @@ function sanitizeHighlights(input) {
   return out
 }
 
+function parseMapsUrlCoords(url) {
+  const raw = String(url || '').trim()
+  if (!raw) return null
+  const atMatch = raw.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+  if (atMatch) {
+    const lat = Number(atMatch[1])
+    const lng = Number(atMatch[2])
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
+  }
+  const bangMatch = raw.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/)
+  if (bangMatch) {
+    const lat = Number(bangMatch[1])
+    const lng = Number(bangMatch[2])
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
+  }
+  const qMatch = raw.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/i)
+  if (qMatch) {
+    const lat = Number(qMatch[1])
+    const lng = Number(qMatch[2])
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
+  }
+  return null
+}
+
+function sanitizeCoord(value, min, max) {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n < min || n > max) return null
+  return Math.round(n * 1e6) / 1e6
+}
+
 function sanitizeVenue(item, categorySet) {
   const id = cleanString(item?.id, 90) || `local-${Math.random().toString(36).slice(2, 9)}`
   let category = cleanString(item?.category, 100)
@@ -97,12 +127,21 @@ function sanitizeVenue(item, categorySet) {
   const mapsUrl = cleanUrl(item?.mapsUrl, 2048)
   const instagram = cleanString(item?.instagram, 180)
   const whatsapp = cleanString(item?.whatsapp, 40)
+  let lat = sanitizeCoord(item?.lat, -90, 90)
+  let lng = sanitizeCoord(item?.lng, -180, 180)
+  if (lat == null || lng == null) {
+    const parsed = parseMapsUrlCoords(mapsUrl)
+    if (parsed) {
+      lat = sanitizeCoord(parsed.lat, -90, 90)
+      lng = sanitizeCoord(parsed.lng, -180, 180)
+    }
+  }
   const isActive = item?.isActive !== false
   const sortOrder = Number.isFinite(Number(item?.sortOrder))
     ? Math.max(0, Math.round(Number(item.sortOrder)))
     : 0
   if (!name && !description) return null
-  return {
+  const venue = {
     id,
     category,
     name,
@@ -117,6 +156,9 @@ function sanitizeVenue(item, categorySet) {
     isActive,
     sortOrder,
   }
+  if (lat != null) venue.lat = lat
+  if (lng != null) venue.lng = lng
+  return venue
 }
 
 function sanitizeVenues(input, categories) {
