@@ -89,6 +89,7 @@ export async function runGlobalSearch(normalized) {
     areaServiceRows,
     tourismRows,
     gastronomyRows = [],
+    lodgingRows = [],
   } = await searchPublicDatabase(normalized)
   const normalizedQuery = normalizeText(normalized)
 
@@ -211,6 +212,33 @@ export async function runGlobalSearch(normalized) {
             120,
           ),
           path: `/catalogo-gastronomico#local-${encodeURIComponent(id)}`,
+        })
+      })
+  }
+
+  const lodgingVenues = parseJsonSafe(lodgingRows[0]?.venues_json, [])
+  if (Array.isArray(lodgingVenues)) {
+    lodgingVenues
+      .filter((venue) => venue && venue.isActive !== false)
+      .filter((venue) => {
+        const haystack = normalizeText(
+          [venue.name, venue.category, venue.location, venue.description, venue.phone].join(' '),
+        )
+        return haystack.includes(normalizedQuery)
+      })
+      .slice(0, 8)
+      .forEach((venue) => {
+        const id = String(venue.id || venue.name || '')
+        if (!id) return
+        add({
+          kind: 'lodging',
+          id,
+          title: String(venue.name || ''),
+          subtitle: excerpt(
+            [venue.category, venue.location, venue.description].filter(Boolean).join(' · '),
+            120,
+          ),
+          path: `/catalogo-hospedajes#local-${encodeURIComponent(id)}`,
         })
       })
   }

@@ -82,6 +82,16 @@ export async function searchPublicDatabase(raw) {
     gastronomyRows = []
   }
 
+  let lodgingRows = []
+  try {
+    const [rows] = await pool.query(
+      'SELECT venues_json FROM lodging_catalog_content WHERE id = 1 LIMIT 1',
+    )
+    lodgingRows = rows
+  } catch {
+    lodgingRows = []
+  }
+
   return {
     newsRows,
     eventRows,
@@ -90,5 +100,6 @@ export async function searchPublicDatabase(raw) {
     areaServiceRows,
     tourismRows,
     gastronomyRows,
+    lodgingRows,
   }
 }
