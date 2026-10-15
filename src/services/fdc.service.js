@@ -973,6 +973,9 @@ function sanitizePagePayload(payload, { current } = {}) {
           : undefined,
         current?.formSection || current?.usefulInfo?.formSection,
       )
+      const isPublic = Object.prototype.hasOwnProperty.call(payload || {}, 'isPublic')
+        ? payload.isPublic === true
+        : current?.isPublic === true || current?.usefulInfo?.isPublic === true
       return {
         title: '',
         items: [],
@@ -982,6 +985,7 @@ function sanitizePagePayload(payload, { current } = {}) {
         heroImageUrlMobile,
         heroCountdown,
         formSection,
+        isPublic,
       }
     })(),
     formNotice: cleanMultiline(payload?.formNotice, 2000),
@@ -1016,6 +1020,7 @@ function sanitizePagePayload(payload, { current } = {}) {
   data.heroImageUrlMobile = data.usefulInfo.heroImageUrlMobile
   data.heroCountdown = data.usefulInfo.heroCountdown
   data.formSection = data.usefulInfo.formSection
+  data.isPublic = data.usefulInfo.isPublic === true
 
   return data
 }
@@ -1083,8 +1088,27 @@ function stripInternalPageFields(content) {
   return rest
 }
 
+export function isFdcModulePublic(page) {
+  return page?.isPublic === true || page?.usefulInfo?.isPublic === true
+}
+
+function assertFdcModulePublic(page) {
+  if (!isFdcModulePublic(page)) {
+    throw new AppError('La Fiesta del Caballo no está disponible en este momento.', 403)
+  }
+}
+
+export async function getFdcPublicStatus() {
+  const page = await getFdcPageContentRow()
+  return { isPublic: isFdcModulePublic(page) }
+}
+
 export async function getFdcPageContentPublic() {
-  return stripInternalPageFields(await getFdcPageContentRow())
+  const page = await getFdcPageContentRow()
+  if (!isFdcModulePublic(page)) {
+    return { isPublic: false }
+  }
+  return { ...stripInternalPageFields(page), isPublic: true }
 }
 
 export async function getFdcPageContentAdmin() {
@@ -1182,6 +1206,7 @@ function queueConfirmationEmail(application) {
 
 export async function createFdcStallApplication(payload) {
   const page = await getFdcPageContentRow()
+  assertFdcModulePublic(page)
   assertFormSectionVisible(page)
   assertFormWindowOpen(page)
   const data = sanitizeApplicationPayload(payload, resolveAllowedRubros(page))
@@ -1247,6 +1272,8 @@ export async function setFdcStallApplicationStatus(
 }
 
 export async function createFdcFaqInquiry(payload) {
+  const page = await getFdcPageContentRow()
+  assertFdcModulePublic(page)
   const fullName = cleanString(payload?.fullName, 180)
   const phone = cleanString(payload?.phone, 80)
   const topic = cleanString(payload?.topic, 80)

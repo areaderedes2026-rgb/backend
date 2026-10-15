@@ -6,6 +6,7 @@ import {
   getFdcFaqInquiryWhatsappTemplate,
   getFdcPageContentAdmin,
   getFdcPageContentPublic,
+  getFdcPublicStatus,
   getFdcStallApplicationAdmin,
   getFdcWhatsappTemplate,
   listFdcFaqInquiriesAdmin,
@@ -25,6 +26,11 @@ function stripInternal(content) {
   const { whatsappMessage, ...rest } = content
   return rest
 }
+
+export const getFdcPublicStatusCtrl = asyncHandler(async (_req, res) => {
+  const data = await getFdcPublicStatus()
+  res.status(200).json({ ok: true, isPublic: data.isPublic === true })
+})
 
 export const getFdcContentCtrl = asyncHandler(async (_req, res) => {
   const content = await getFdcPageContentPublic()

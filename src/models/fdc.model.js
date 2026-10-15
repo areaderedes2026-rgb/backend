@@ -117,6 +117,7 @@ function mapPageRow(row) {
           },
     formSection:
       useful.formSection && typeof useful.formSection === 'object' ? useful.formSection : null,
+    isPublic: useful.isPublic === true,
     ctaTitle: row.cta_title || '',
     ctaBody: row.cta_body || '',
     whatsappMessage: row.whatsapp_message != null ? String(row.whatsapp_message) : '',

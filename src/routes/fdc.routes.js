@@ -5,6 +5,7 @@ import {
   deleteFdcStallApplicationCtrl,
   getFdcContentAdminCtrl,
   getFdcContentCtrl,
+  getFdcPublicStatusCtrl,
   getFdcFaqInquiryAdminCtrl,
   getFdcFaqInquiryWhatsappTemplateCtrl,
   getFdcStallApplicationAdminCtrl,
@@ -32,6 +33,8 @@ const applicationRateLimit = createRateLimiter({
   message:
     'Recibimos muchas preinscripciones desde este origen. Intentá nuevamente en unos minutos.',
 })
+
+router.get('/public-status', getFdcPublicStatusCtrl)
 
 router.get('/content', getFdcContentCtrl)
 
